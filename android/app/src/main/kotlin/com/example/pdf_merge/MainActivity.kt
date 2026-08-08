@@ -3,6 +3,7 @@ package com.example.pdf_merge
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
@@ -16,7 +17,6 @@ class MainActivity : FlutterActivity() {
     private val INTENT_CHANNEL = "com.example.pdf_merge/intent"
     private val MERGE_CHANNEL = "com.example.pdf_merge/merge"
     private var intentChannel: MethodChannel? = null
-    private var pendingIntentFiles: MutableList<String> = mutableListOf()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -134,7 +134,7 @@ class MainActivity : FlutterActivity() {
     private fun mergePdfFiles(inputPaths: List<String>, outputPath: String): Boolean {
         try {
             val document = PdfDocument()
-            var pageOffset = 0
+            var pageIndex = 1
 
             for (filePath in inputPaths) {
                 val file = File(filePath)
@@ -149,23 +149,33 @@ class MainActivity : FlutterActivity() {
                     val pageInfo = PdfDocument.PageInfo.Builder(
                         sourcePage.width,
                         sourcePage.height,
-                        pageOffset + i
+                        pageIndex
                     ).create()
 
                     val destPage = document.startPage(pageInfo)
 
-                    // Render the source page onto the destination page's canvas
+                    // Create bitmap to render the PDF page onto
+                    val bitmap = Bitmap.createBitmap(
+                        sourcePage.width,
+                        sourcePage.height,
+                        Bitmap.Config.ARGB_8888
+                    )
+                    
                     sourcePage.render(
-                        destPage.canvas,
-                        null, null,
-                        PdfRenderer.Page.RENDER_MODE_FOR_PRINT
+                        bitmap,
+                        null,
+                        null,
+                        PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
                     )
 
+                    destPage.canvas.drawBitmap(bitmap, 0f, 0f, null)
+
                     document.finishPage(destPage)
+                    bitmap.recycle()
                     sourcePage.close()
+                    pageIndex++
                 }
 
-                pageOffset += renderer.pageCount
                 renderer.close()
                 fileDescriptor.close()
             }
