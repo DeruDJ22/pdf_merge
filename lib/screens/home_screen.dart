@@ -549,6 +549,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _clearAppCache() async {
+    try {
+      final freedBytes = await platform.invokeMethod<int>('clearCache') ?? 0;
+      final freedMb = (freedBytes / (1024 * 1024)).toStringAsFixed(1);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cache dibersihkan! Menghapus $freedMb MB data sementara.'),
+            backgroundColor: const Color(0xFF6C63FF),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
   void _reorderFiles(int oldIndex, int newIndex) {
     setState(() {
       if (oldIndex < newIndex) {
@@ -688,6 +705,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onTap: _toggleMergeMode,
           ),
         ] else if (_openedFiles.isNotEmpty) ...[
+          IconButton(
+            onPressed: _clearAppCache,
+            icon: const Icon(Icons.cleaning_services_rounded, color: Colors.white70),
+            tooltip: 'Bersihkan Cache Aplikasi',
+          ),
           IconButton(
             onPressed: _clearAllHistory,
             icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white70),

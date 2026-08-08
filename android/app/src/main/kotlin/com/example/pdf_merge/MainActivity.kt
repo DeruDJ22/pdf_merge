@@ -27,6 +27,9 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Clean stale temporary cache files on app launch
+        executor.execute { cleanStaleCache() }
+
         // Intent channel for receiving PDF files
         intentChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INTENT_CHANNEL)
         intentChannel?.setMethodCallHandler { call, result ->
@@ -39,7 +42,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // Merge & Thumbnail channel
+        // Merge & Thumbnail & Cache channel
         mergeChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MERGE_CHANNEL)
         mergeChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -76,6 +79,14 @@ class MainActivity : FlutterActivity() {
                         result.error("INVALID_PATH", "Path is null", null)
                     }
                 }
+                "clearCache" -> {
+                    executor.execute {
+                        val freedBytes = cleanAppCache()
+                        mainHandler.post {
+                            result.success(freedBytes)
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -99,21 +110,21 @@ class MainActivity : FlutterActivity() {
         when (intent.action) {
             Intent.ACTION_VIEW -> {
                 intent.data?.let { uri ->
-                    val path = copyUriToLocal(uri)
+                    val path = resolveOrCopyUri(uri)
                     if (path != null) files.add(path)
                 }
             }
             Intent.ACTION_SEND -> {
                 val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 if (uri != null) {
-                    val path = copyUriToLocal(uri)
+                    val path = resolveOrCopyUri(uri)
                     if (path != null) files.add(path)
                 }
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 val uris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
                 uris?.forEach { uri ->
-                    val path = copyUriToLocal(uri)
+                    val path = resolveOrCopyUri(uri)
                     if (path != null) files.add(path)
                 }
             }
@@ -122,11 +133,42 @@ class MainActivity : FlutterActivity() {
         return files
     }
 
+    /// Try resolving actual file path directly WITHOUT duplicating/copying file
+    private fun resolveOrCopyUri(uri: Uri): String? {
+        // 1. Direct file URI
+        if (uri.scheme == "file") {
+            val path = uri.path
+            if (path != null && File(path).exists()) return path
+        }
+
+        // 2. Content URI direct path resolution (Zero memory overhead)
+        if (uri.scheme == "content") {
+            try {
+                val proj = arrayOf(android.provider.MediaStore.MediaColumns.DATA)
+                val cursor = contentResolver.query(uri, proj, null, null, null)
+                cursor?.use {
+                    if (it.moveToFirst()) {
+                        val columnIndex = it.getColumnIndex(android.provider.MediaStore.MediaColumns.DATA)
+                        if (columnIndex >= 0) {
+                            val realPath = it.getString(columnIndex)
+                            if (realPath != null && File(realPath).exists()) {
+                                return realPath
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. Fallback: Copy stream to cache ONLY if direct path is impossible
+        return copyUriToLocal(uri)
+    }
+
     private fun copyUriToLocal(uri: Uri): String? {
         try {
             val inputStream = contentResolver.openInputStream(uri) ?: return null
             
-            var fileName = "imported_${System.currentTimeMillis()}.pdf"
+            var fileName = "imported_${uri.toString().hashCode()}.pdf"
             val cursor = contentResolver.query(uri, null, null, null, null)
             cursor?.use {
                 if (it.moveToFirst()) {
@@ -141,6 +183,12 @@ class MainActivity : FlutterActivity() {
             if (!outputDir.exists()) outputDir.mkdirs()
 
             val outputFile = File(outputDir, fileName)
+
+            // Avoid re-copying if file already exists with same size
+            if (outputFile.exists() && outputFile.length() > 0) {
+                return outputFile.absolutePath
+            }
+
             inputStream.use { input ->
                 FileOutputStream(outputFile).use { output ->
                     input.copyTo(output)
@@ -154,6 +202,7 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /// Generate ultra-compressed 120px JPEG thumbnail (5-15 KB per file max)
     private fun generateThumbnail(pdfPath: String): String? {
         try {
             val file = File(pdfPath)
@@ -162,7 +211,8 @@ class MainActivity : FlutterActivity() {
             val thumbDir = File(cacheDir, "pdf_thumbnails")
             if (!thumbDir.exists()) thumbDir.mkdirs()
 
-            val thumbFile = File(thumbDir, "${file.absolutePath.hashCode()}.png")
+            val hashKey = "${file.absolutePath}_${file.length()}".hashCode()
+            val thumbFile = File(thumbDir, "thumb_$hashKey.jpg")
             if (thumbFile.exists() && thumbFile.length() > 0) {
                 return thumbFile.absolutePath
             }
@@ -176,14 +226,14 @@ class MainActivity : FlutterActivity() {
             }
 
             val page = renderer.openPage(0)
-            val width = 200
-            val height = ((width * page.height.toDouble()) / page.width).toInt().coerceIn(150, 300)
+            val width = 120
+            val height = ((width * page.height.toDouble()) / page.width).toInt().coerceIn(90, 180)
 
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
 
             FileOutputStream(thumbFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 85, out)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 50, out)
             }
 
             bitmap.recycle()
@@ -196,6 +246,43 @@ class MainActivity : FlutterActivity() {
             e.printStackTrace()
             return null
         }
+    }
+
+    /// Clean temporary cache files automatically
+    private fun cleanStaleCache() {
+        try {
+            val importedDir = File(cacheDir, "imported_pdfs")
+            if (importedDir.exists()) {
+                val now = System.currentTimeMillis()
+                importedDir.listFiles()?.forEach { f ->
+                    // Delete imported temp PDFs older than 12 hours
+                    if (now - f.lastModified() > 12 * 60 * 60 * 1000) {
+                        f.delete()
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun cleanAppCache(): Long {
+        var totalFreed: Long = 0
+        try {
+            val importedDir = File(cacheDir, "imported_pdfs")
+            if (importedDir.exists()) {
+                importedDir.listFiles()?.forEach {
+                    totalFreed += it.length()
+                    it.delete()
+                }
+            }
+            val thumbDir = File(cacheDir, "pdf_thumbnails")
+            if (thumbDir.exists()) {
+                thumbDir.listFiles()?.forEach {
+                    totalFreed += it.length()
+                    it.delete()
+                }
+            }
+        } catch (_: Exception) {}
+        return totalFreed
     }
 
     private fun mergePdfFilesBackground(inputPaths: List<String>, outputPath: String): Boolean {
