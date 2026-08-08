@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
@@ -8,6 +9,8 @@ class PdfFileModel {
   final String name;
   final int sizeBytes;
   final DateTime? addedAt;
+  int lastReadPage;
+  int totalPages;
 
   PdfFileModel({
     required this.id,
@@ -15,6 +18,8 @@ class PdfFileModel {
     String? name,
     this.sizeBytes = 0,
     DateTime? addedAt,
+    this.lastReadPage = 0,
+    this.totalPages = 0,
   })  : name = name ?? p.basenameWithoutExtension(path),
         addedAt = addedAt ?? DateTime.now();
 
@@ -24,6 +29,47 @@ class PdfFileModel {
     if (sizeBytes < 1024) return '$sizeBytes B';
     if (sizeBytes < 1024 * 1024) return '${(sizeBytes / 1024).toStringAsFixed(1)} KB';
     return '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  double get progressPercentage {
+    if (totalPages <= 0) return 0.0;
+    return ((lastReadPage + 1) / totalPages).clamp(0.0, 1.0);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'path': path,
+        'name': name,
+        'sizeBytes': sizeBytes,
+        'addedAt': addedAt?.millisecondsSinceEpoch,
+        'lastReadPage': lastReadPage,
+        'totalPages': totalPages,
+      };
+
+  factory PdfFileModel.fromJson(Map<String, dynamic> json) => PdfFileModel(
+        id: json['id'] as String,
+        path: json['path'] as String,
+        name: json['name'] as String?,
+        sizeBytes: json['sizeBytes'] as int? ?? 0,
+        addedAt: json['addedAt'] != null
+            ? DateTime.fromMillisecondsSinceEpoch(json['addedAt'] as int)
+            : null,
+        lastReadPage: json['lastReadPage'] as int? ?? 0,
+        totalPages: json['totalPages'] as int? ?? 0,
+      );
+
+  static String encodeList(List<PdfFileModel> files) {
+    return jsonEncode(files.map((f) => f.toJson()).toList());
+  }
+
+  static List<PdfFileModel> decodeList(String jsonStr) {
+    if (jsonStr.isEmpty) return [];
+    try {
+      final List list = jsonDecode(jsonStr);
+      return list.map((item) => PdfFileModel.fromJson(item as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<PdfFileModel> fromPath(String path) async {

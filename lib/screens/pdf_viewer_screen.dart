@@ -4,6 +4,7 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/pdf_file_model.dart';
+import '../services/history_service.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final PdfFileModel pdfFile;
@@ -53,6 +54,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       _activeTabIndex = 0;
     }
 
+    _currentPage = _currentFile.lastReadPage;
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -68,7 +71,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
 
   void _scheduleAutoHideControls() {
     _autoHideTimer?.cancel();
-    _autoHideTimer = Timer(const Duration(seconds: 3), () {
+    _autoHideTimer = Timer(const Duration(seconds: 4), () {
       if (mounted && _showControls && !_showGridOverview) {
         setState(() {
           _showControls = false;
@@ -93,6 +96,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         _isReady = false;
         _showGridOverview = false;
         _showControls = true;
+        _currentPage = _currentFile.lastReadPage;
       });
       _scheduleAutoHideControls();
     }
@@ -110,6 +114,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         _activeTabIndex = _openedTabs.length - 1;
       }
       _isReady = false;
+      _currentPage = _currentFile.lastReadPage;
     });
   }
 
@@ -131,6 +136,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 _activeTabIndex = _openedTabs.length - 1;
                 _isReady = false;
                 _showControls = true;
+                _currentPage = 0;
               });
               _scheduleAutoHideControls();
             } else {
@@ -214,6 +220,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               child: PDFView(
                 key: ValueKey('pdf_view_${_currentFile.id}_${_activeTabIndex}_$_nightMode'),
                 filePath: _currentFile.path,
+                defaultPage: _currentFile.lastReadPage,
                 enableSwipe: true,
                 swipeHorizontal: false,
                 autoSpacing: false,
@@ -226,14 +233,24 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                     _totalPages = pages!;
                     _isReady = true;
                   });
+                  _currentFile.totalPages = pages!;
+                  HistoryService.updateProgress(_currentFile.path, _currentPage, pages);
                 },
                 onViewCreated: (controller) {
                   _pdfController = controller;
+                  if (_currentFile.lastReadPage > 0) {
+                    _pdfController?.setPage(_currentFile.lastReadPage);
+                  }
                 },
                 onPageChanged: (page, total) {
-                  setState(() {
-                    _currentPage = page!;
-                  });
+                  if (page != null) {
+                    setState(() {
+                      _currentPage = page;
+                    });
+                    _currentFile.lastReadPage = page;
+                    if (total != null) _currentFile.totalPages = total;
+                    HistoryService.updateProgress(_currentFile.path, page, total ?? _totalPages);
+                  }
                 },
                 onError: (error) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -452,65 +469,93 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             ),
           ),
 
-          // Bottom Page Control Indicator (Animates smoothly in/out)
+          // Bottom Page Control Indicator & Fast Page Jump Slider
           if (_isReady && !_showGridOverview)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOutCubic,
-              bottom: _showControls ? 24 : -80,
-              left: 0,
-              right: 0,
+              bottom: _showControls ? 20 : -120,
+              left: 20,
+              right: 20,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E).withOpacity(0.92),
+                    color: const Color(0xFF1A1A2E).withOpacity(0.95),
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.25),
-                        blurRadius: 16,
+                        color: const Color(0xFF6C63FF).withOpacity(0.3),
+                        blurRadius: 20,
                         spreadRadius: 0,
                       ),
                     ],
                     border: Border.all(
-                      color: const Color(0xFF6C63FF).withOpacity(0.4),
+                      color: const Color(0xFF6C63FF).withOpacity(0.5),
                       width: 1,
                     ),
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        onPressed: _currentPage > 0
-                            ? () => _pdfController?.setPage(_currentPage - 1)
-                            : null,
-                        icon: const Icon(Icons.chevron_left_rounded),
-                        color: Colors.white,
-                        iconSize: 22,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        padding: EdgeInsets.zero,
+                      // Page text indicator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            onPressed: _currentPage > 0
+                                ? () => _pdfController?.setPage(_currentPage - 1)
+                                : null,
+                            icon: const Icon(Icons.chevron_left_rounded),
+                            color: Colors.white,
+                            iconSize: 22,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            padding: EdgeInsets.zero,
+                          ),
+                          Text(
+                            'Halaman ${_currentPage + 1} / $_totalPages',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _currentPage < _totalPages - 1
+                                ? () => _pdfController?.setPage(_currentPage + 1)
+                                : null,
+                            icon: const Icon(Icons.chevron_right_rounded),
+                            color: Colors.white,
+                            iconSize: 22,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Halaman ${_currentPage + 1} / $_totalPages',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+
+                      // Fast Jump Page Slider
+                      if (_totalPages > 1)
+                        SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 4,
+                            activeTrackColor: const Color(0xFF6C63FF),
+                            inactiveTrackColor: Colors.white.withOpacity(0.15),
+                            thumbColor: const Color(0xFF9C8FFF),
+                            overlayColor: const Color(0xFF6C63FF).withOpacity(0.2),
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                          ),
+                          child: Slider(
+                            value: _currentPage.toDouble().clamp(0.0, (_totalPages - 1).toDouble()),
+                            min: 0,
+                            max: (_totalPages - 1).toDouble(),
+                            divisions: _totalPages > 1 ? _totalPages - 1 : 1,
+                            onChanged: (value) {
+                              _scheduleAutoHideControls();
+                              final pageNum = value.round();
+                              _pdfController?.setPage(pageNum);
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        onPressed: _currentPage < _totalPages - 1
-                            ? () => _pdfController?.setPage(_currentPage + 1)
-                            : null,
-                        icon: const Icon(Icons.chevron_right_rounded),
-                        color: Colors.white,
-                        iconSize: 22,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        padding: EdgeInsets.zero,
-                      ),
                     ],
                   ),
                 ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/pdf_file_model.dart';
+import '../services/history_service.dart';
 import '../widgets/pdf_card.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/empty_state.dart';
@@ -16,9 +17,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  final List<PdfFileModel> _openedFiles = [];
+  List<PdfFileModel> _openedFiles = [];
   final List<PdfFileModel> _mergeQueue = [];
   bool _isMergeMode = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
   late AnimationController _fabAnimController;
   late Animation<double> _fabScaleAnimation;
 
@@ -39,9 +43,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
     _fabAnimController.forward();
 
+    // Load saved history from persistent storage
+    _loadSavedHistory();
+
     // Listen for incoming intents
     _setupIntentListener();
     _getInitialIntent();
+  }
+
+  Future<void> _loadSavedHistory() async {
+    final history = await HistoryService.loadHistory();
+    if (mounted) {
+      setState(() {
+        _openedFiles = history;
+      });
+    }
   }
 
   void _setupIntentListener() {
@@ -70,15 +86,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _handleIncomingPdfPath(String path) async {
     final model = await PdfFileModel.fromPath(path);
-    if (!_openedFiles.any((f) => f.path == path)) {
-      setState(() {
-        _openedFiles.add(model);
-      });
-    }
-
+    final updated = await HistoryService.addOrUpdateFile(model);
     if (mounted) {
+      setState(() {
+        _openedFiles = updated;
+      });
       _showOptionModal(model);
     }
+  }
+
+  /// Filter files based on search query
+  List<PdfFileModel> get _filteredFiles {
+    if (_searchQuery.trim().isEmpty) return _openedFiles;
+    return _openedFiles
+        .where((f) => f.name.toLowerCase().contains(_searchQuery.toLowerCase().trim()))
+        .toList();
   }
 
   /// Show modal sheet with choice: "Baca PDF" or "Gabungkan (Merge) PDF"
@@ -302,26 +324,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _openViewer(PdfFileModel model) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => PdfViewerScreen(
-          pdfFile: model,
-          allOpenedFiles: _openedFiles,
+  void _openViewer(PdfFileModel model) async {
+    await HistoryService.addOrUpdateFile(model);
+    if (mounted) {
+      await Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => PdfViewerScreen(
+            pdfFile: model,
+            allOpenedFiles: _openedFiles,
+          ),
+          transitionsBuilder: (_, animation, __, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 400),
         ),
-        transitionsBuilder: (_, animation, __, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
+      );
+      // Reload history on return to update reading progress
+      _loadSavedHistory();
+    }
   }
 
   /// Triggered from Reader Mode Card
@@ -336,12 +363,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
         final path = result.files.first.path!;
         final model = await PdfFileModel.fromPath(path);
-        if (!_openedFiles.any((f) => f.path == model.path)) {
+        final updated = await HistoryService.addOrUpdateFile(model);
+        if (mounted) {
           setState(() {
-            _openedFiles.add(model);
+            _openedFiles = updated;
           });
+          _openViewer(model);
         }
-        _openViewer(model);
       }
     } catch (e) {
       if (mounted) {
@@ -369,14 +397,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         for (final file in result.files) {
           if (file.path != null) {
             final model = await PdfFileModel.fromPath(file.path!);
-            if (!_openedFiles.any((f) => f.path == model.path)) {
-              setState(() {
-                _openedFiles.add(model);
-              });
-            }
+            await HistoryService.addOrUpdateFile(model);
             pickedModels.add(model);
           }
         }
+
+        await _loadSavedHistory();
 
         if (pickedModels.length >= 2) {
           setState(() {
@@ -428,14 +454,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         for (final file in result.files) {
           if (file.path != null) {
             final model = await PdfFileModel.fromPath(file.path!);
-            if (!_openedFiles.any((f) => f.path == model.path)) {
-              setState(() {
-                _openedFiles.add(model);
-              });
-            }
+            await HistoryService.addOrUpdateFile(model);
             addedList.add(model);
           }
         }
+
+        await _loadSavedHistory();
 
         if (addedList.length == 1 && mounted) {
           _showOptionModal(addedList.first);
@@ -473,11 +497,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _removeFile(PdfFileModel file) {
-    setState(() {
-      _openedFiles.remove(file);
-      _mergeQueue.remove(file);
-    });
+  Future<void> _removeFile(PdfFileModel file) async {
+    final updated = await HistoryService.removeFile(file.path);
+    if (mounted) {
+      setState(() {
+        _openedFiles = updated;
+        _mergeQueue.remove(file);
+      });
+    }
+  }
+
+  Future<void> _clearAllHistory() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text('Hapus Semua Riwayat?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Daftar file riwayat akan dibersihkan. File fisik di HP kamu tidak akan terhapus.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+            child: const Text('Hapus Semua', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await HistoryService.clearHistory();
+      if (mounted) {
+        setState(() {
+          _openedFiles.clear();
+          _mergeQueue.clear();
+        });
+      }
+    }
   }
 
   void _reorderFiles(int oldIndex, int newIndex) {
@@ -488,6 +550,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final item = _openedFiles.removeAt(oldIndex);
       _openedFiles.insert(newIndex, item);
     });
+    HistoryService.saveHistory(_openedFiles);
   }
 
   void _openMergeScreen() {
@@ -510,15 +573,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           filesToMerge: List.from(_mergeQueue),
           onMergeComplete: (mergedPath, sourceFiles) async {
             final model = await PdfFileModel.fromPath(mergedPath);
+            await HistoryService.addOrUpdateFile(model);
+
+            // Filter out source files
+            for (final src in sourceFiles) {
+              await HistoryService.removeFile(src.path);
+            }
+
+            final history = await HistoryService.loadHistory();
+
             if (mounted) {
               setState(() {
-                // Filter out source files so only the final merged PDF is kept!
-                for (final src in sourceFiles) {
-                  _openedFiles.removeWhere((f) => f.path == src.path);
-                }
-                if (!_openedFiles.any((f) => f.path == model.path)) {
-                  _openedFiles.add(model);
-                }
+                _openedFiles = history;
                 _isMergeMode = false;
                 _mergeQueue.clear();
               });
@@ -545,6 +611,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _fabAnimController.dispose();
     super.dispose();
   }
@@ -560,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onReadPdfPressed: _pickAndReadPdf,
                 onMergePdfPressed: _pickAndMergePdfs,
               )
-            : _buildFileList(),
+            : _buildBodyContent(),
         floatingActionButton: _openedFiles.isNotEmpty ? _buildFab() : null,
       ),
     );
@@ -590,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             )
           else if (_openedFiles.isNotEmpty)
             Text(
-              '${_openedFiles.length} file dibuka',
+              '${_openedFiles.length} Riwayat Dokumen',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.white.withOpacity(0.6),
@@ -615,6 +682,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onTap: _toggleMergeMode,
           ),
         ] else if (_openedFiles.isNotEmpty) ...[
+          IconButton(
+            onPressed: _clearAllHistory,
+            icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white70),
+            tooltip: 'Hapus Semua Riwayat',
+          ),
+          const SizedBox(width: 4),
           _buildActionButton(
             icon: Icons.merge_type_rounded,
             label: 'Mode Merge',
@@ -661,55 +734,113 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFileList() {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: ReorderableListView.builder(
-        key: ValueKey(_isMergeMode),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        itemCount: _openedFiles.length,
-        onReorder: _reorderFiles,
-        proxyDecorator: (child, index, animation) {
-          return AnimatedBuilder(
-            animation: animation,
-            builder: (context, child) {
-              final scale = Tween<double>(begin: 1.0, end: 1.05)
-                  .animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
-              return Transform.scale(
-                scale: scale.value,
-                child: Material(
-                  color: Colors.transparent,
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(16),
-                  child: child,
-                ),
-              );
-            },
-            child: child,
-          );
-        },
-        itemBuilder: (context, index) {
-          final file = _openedFiles[index];
-          final isSelected = _mergeQueue.contains(file);
-          final mergeIndex = _mergeQueue.indexOf(file);
+  Widget _buildBodyContent() {
+    final filtered = _filteredFiles;
 
-          return PdfCard(
-            key: ValueKey(file.id),
-            pdfFile: file,
-            isMergeMode: _isMergeMode,
-            isSelected: isSelected,
-            mergeOrder: mergeIndex >= 0 ? mergeIndex + 1 : null,
-            onTap: () {
-              if (_isMergeMode) {
-                _toggleFileInMergeQueue(file);
-              } else {
-                _showOptionModal(file);
-              }
-            },
-            onDismissed: () => _removeFile(file),
-          );
-        },
-      ),
+    return Column(
+      children: [
+        // Search Bar Widget
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A2E),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Cari file PDF di riwayat...',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.5), size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ),
+
+        // File List
+        Expanded(
+          child: filtered.isEmpty
+              ? Center(
+                  child: Text(
+                    'File "$_searchQuery" tidak ditemukan',
+                    style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  ),
+                )
+              : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: ReorderableListView.builder(
+                    key: ValueKey(_isMergeMode),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                    itemCount: filtered.length,
+                    onReorder: _reorderFiles,
+                    proxyDecorator: (child, index, animation) {
+                      return AnimatedBuilder(
+                        animation: animation,
+                        builder: (context, child) {
+                          final scale = Tween<double>(begin: 1.0, end: 1.05)
+                              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
+                          return Transform.scale(
+                            scale: scale.value,
+                            child: Material(
+                              color: Colors.transparent,
+                              elevation: 8,
+                              borderRadius: BorderRadius.circular(16),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: child,
+                      );
+                    },
+                    itemBuilder: (context, index) {
+                      final file = filtered[index];
+                      final isSelected = _mergeQueue.contains(file);
+                      final mergeIndex = _mergeQueue.indexOf(file);
+
+                      return PdfCard(
+                        key: ValueKey(file.id),
+                        pdfFile: file,
+                        isMergeMode: _isMergeMode,
+                        isSelected: isSelected,
+                        mergeOrder: mergeIndex >= 0 ? mergeIndex + 1 : null,
+                        onTap: () {
+                          if (_isMergeMode) {
+                            _toggleFileInMergeQueue(file);
+                          } else {
+                            _showOptionModal(file);
+                          }
+                        },
+                        onDismissed: () => _removeFile(file),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
 

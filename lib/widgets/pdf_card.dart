@@ -95,7 +95,7 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
               border: Border.all(
                 color: widget.isSelected
                     ? const Color(0xFF6C63FF).withOpacity(0.6)
-                    : Colors.white.withOpacity(0.06),
+                    : Colors.white.withOpacity(0.08),
                 width: widget.isSelected ? 1.5 : 1,
               ),
               boxShadow: [
@@ -180,20 +180,6 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                       Row(
                         children: [
                           Icon(
-                            Icons.insert_drive_file_rounded,
-                            size: 12,
-                            color: Colors.white.withOpacity(0.4),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            widget.pdfFile.fileName,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Icon(
                             Icons.data_usage_rounded,
                             size: 12,
                             color: Colors.white.withOpacity(0.4),
@@ -208,9 +194,38 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                           ),
                         ],
                       ),
+                      if (widget.pdfFile.totalPages > 0) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: widget.pdfFile.progressPercentage,
+                                  backgroundColor: Colors.white.withOpacity(0.1),
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
+                                  minHeight: 4,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Hal ${widget.pdfFile.lastReadPage + 1}/${widget.pdfFile.totalPages}',
+                              style: const TextStyle(
+                                color: Color(0xFF9C8FFF),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
+
+                const SizedBox(width: 8),
 
                 // Action indicator
                 if (widget.isMergeMode)
