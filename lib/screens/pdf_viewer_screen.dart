@@ -17,7 +17,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   int _totalPages = 0;
   int _currentPage = 0;
   bool _isReady = false;
-  bool _nightMode = false; // Default false to preserve original document colors
+  bool _nightMode = false; // Default false for accurate original colors
   PDFViewController? _pdfController;
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -61,7 +61,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       backgroundColor: _nightMode ? const Color(0xFF0D0D1A) : const Color(0xFF1E1E1E),
       body: Stack(
         children: [
-          // PDF View
+          // PDF View with Continuous Smooth Scrolling (no page snapping or gap boundaries)
           GestureDetector(
             onTap: _toggleControls,
             child: FadeTransition(
@@ -71,10 +71,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 filePath: widget.pdfFile.path,
                 enableSwipe: true,
                 swipeHorizontal: false,
-                autoSpacing: true,
-                pageFling: true,
-                pageSnap: true,
-                fitPolicy: FitPolicy.BOTH,
+                autoSpacing: false,       // Seamless layout without forced gaps
+                pageFling: false,         // Continuous natural scroll momentum
+                pageSnap: false,          // Continuous scrolling without page snapping
+                fitPolicy: FitPolicy.WIDTH, // Fits full width for smooth document flow
                 nightMode: _nightMode,
                 onRender: (pages) {
                   setState(() {
@@ -116,7 +116,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   end: Alignment.bottomCenter,
                   colors: [
                     const Color(0xFF0D0D1A),
-                    const Color(0xFF0D0D1A).withOpacity(0.8),
+                    const Color(0xFF0D0D1A).withOpacity(0.85),
                     Colors.transparent,
                   ],
                 ),
@@ -124,7 +124,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(8, 4, 16, 20),
                   child: Row(
                     children: [
                       IconButton(
@@ -132,10 +132,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                         icon: const Icon(Icons.arrow_back_rounded),
                         color: Colors.white,
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
+                          backgroundColor: Colors.white.withOpacity(0.12),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,7 +145,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.bold,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -153,7 +153,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             Text(
                               widget.pdfFile.sizeFormatted,
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
+                                color: Colors.white.withOpacity(0.6),
                                 fontSize: 12,
                               ),
                             ),
@@ -168,11 +168,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                         ),
                         color: _nightMode ? const Color(0xFF6C63FF) : Colors.amber,
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
+                          backgroundColor: Colors.white.withOpacity(0.12),
                         ),
                         tooltip: _nightMode ? 'Mode Terang' : 'Mode Gelap',
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       // Share button
                       IconButton(
                         onPressed: () {
@@ -184,7 +184,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                         icon: const Icon(Icons.share_rounded),
                         color: Colors.white,
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
+                          backgroundColor: Colors.white.withOpacity(0.12),
                         ),
                       ),
                     ],
@@ -204,19 +204,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E).withOpacity(0.95),
+                    color: const Color(0xFF1A1A2E).withOpacity(0.92),
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.2),
-                        blurRadius: 12,
+                        color: const Color(0xFF6C63FF).withOpacity(0.25),
+                        blurRadius: 16,
                         spreadRadius: 0,
                       ),
                     ],
                     border: Border.all(
-                      color: const Color(0xFF6C63FF).withOpacity(0.3),
+                      color: const Color(0xFF6C63FF).withOpacity(0.4),
                       width: 1,
                     ),
                   ),
@@ -229,27 +229,27 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             : null,
                         icon: const Icon(Icons.chevron_left_rounded),
                         color: Colors.white,
-                        iconSize: 20,
+                        iconSize: 22,
                         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                         padding: EdgeInsets.zero,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         'Halaman ${_currentPage + 1} / $_totalPages',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       IconButton(
                         onPressed: _currentPage < _totalPages - 1
                             ? () => _pdfController?.setPage(_currentPage + 1)
                             : null,
                         icon: const Icon(Icons.chevron_right_rounded),
                         color: Colors.white,
-                        iconSize: 20,
+                        iconSize: 22,
                         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                         padding: EdgeInsets.zero,
                       ),
@@ -273,7 +273,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   Text(
                     'Memuat PDF...',
                     style: TextStyle(
-                      color: Colors.white54,
+                      color: Colors.white70,
                       fontSize: 14,
                     ),
                   ),

@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
     } catch (e) {
-      // No initial intent or channel not set up yet
+      // No initial intent
     }
   }
 
@@ -212,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Buka langsung untuk membaca dokumen',
+                              'Buka langsung dengan scroll terus-menerus tanpa pembatas',
                               style: TextStyle(
                                 color: Colors.white54,
                                 fontSize: 12,
@@ -319,6 +319,97 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
+  }
+
+  /// Triggered from Reader Mode Card
+  Future<void> _pickAndReadPdf() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+        final path = result.files.first.path!;
+        final model = await PdfFileModel.fromPath(path);
+        if (!_openedFiles.any((f) => f.path == model.path)) {
+          setState(() {
+            _openedFiles.add(model);
+          });
+        }
+        _openViewer(model);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka file: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Triggered from Merge Mode Card
+  Future<void> _pickAndMergePdfs() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final pickedModels = <PdfFileModel>[];
+        for (final file in result.files) {
+          if (file.path != null) {
+            final model = await PdfFileModel.fromPath(file.path!);
+            if (!_openedFiles.any((f) => f.path == model.path)) {
+              setState(() {
+                _openedFiles.add(model);
+              });
+            }
+            pickedModels.add(model);
+          }
+        }
+
+        if (pickedModels.length >= 2) {
+          setState(() {
+            _isMergeMode = true;
+            _mergeQueue.clear();
+            _mergeQueue.addAll(pickedModels);
+          });
+          _openMergeScreen();
+        } else if (pickedModels.length == 1) {
+          setState(() {
+            _isMergeMode = true;
+            _mergeQueue.clear();
+            _mergeQueue.addAll(pickedModels);
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('File ditambahkan. Pilih 1 file lagi untuk digabungkan.'),
+                backgroundColor: const Color(0xFF6C63FF),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memilih file: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _pickPdfFiles() async {
@@ -452,8 +543,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: _buildAppBar(),
-        body: _openedFiles.isEmpty ? const EmptyState() : _buildFileList(),
-        floatingActionButton: _buildFab(),
+        body: _openedFiles.isEmpty
+            ? EmptyState(
+                onReadPdfPressed: _pickAndReadPdf,
+                onMergePdfPressed: _pickAndMergePdfs,
+              )
+            : _buildFileList(),
+        floatingActionButton: _openedFiles.isNotEmpty ? _buildFab() : null,
       ),
     );
   }
