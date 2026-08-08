@@ -47,6 +47,27 @@ class _MergeScreenState extends State<MergeScreen>
       duration: const Duration(milliseconds: 600),
     );
     _animController.forward();
+
+    _setupProgressListener();
+  }
+
+  void _setupProgressListener() {
+    platform.setMethodCallHandler((call) async {
+      if (call.method == 'onProgress') {
+        final args = call.arguments as Map?;
+        if (args != null) {
+          final processed = args['processed'] as int? ?? 0;
+          final total = args['total'] as int? ?? 1;
+          final percent = args['percent'] as int? ?? 0;
+          if (mounted) {
+            setState(() {
+              _progress = (percent / 100.0).clamp(0.0, 1.0);
+              _statusText = 'Menggabungkan halaman $processed dari $total...';
+            });
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -138,7 +159,7 @@ class _MergeScreenState extends State<MergeScreen>
 
     setState(() {
       _isMerging = true;
-      _progress = 0.15;
+      _progress = 0.0;
       _statusText = 'Membaca ${_files.length} file PDF...';
     });
 
@@ -154,16 +175,7 @@ class _MergeScreenState extends State<MergeScreen>
 
       final outputPath = await _getPublicOutputPath(outputName);
 
-      // Smooth animated progress updates
-      await Future.delayed(const Duration(milliseconds: 250));
-      if (mounted) {
-        setState(() {
-          _progress = 0.45;
-          _statusText = 'Menggabungkan dokumen & halaman...';
-        });
-      }
-
-      // Try native Android merge
+      // Try native Android background merge with real-time page-by-page progress
       try {
         final result = await platform.invokeMethod('mergePdfs', {
           'paths': paths,
@@ -171,14 +183,6 @@ class _MergeScreenState extends State<MergeScreen>
         });
 
         if (result == true) {
-          if (mounted) {
-            setState(() {
-              _progress = 0.85;
-              _statusText = 'Menyimpan file hasil merge...';
-            });
-          }
-          await Future.delayed(const Duration(milliseconds: 300));
-
           if (mounted) {
             setState(() {
               _mergedFilePath = outputPath;

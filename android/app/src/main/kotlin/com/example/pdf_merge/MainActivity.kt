@@ -6,17 +6,23 @@ import android.os.Bundle
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.graphics.pdf.PdfRenderer
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val INTENT_CHANNEL = "com.example.pdf_merge/intent"
     private val MERGE_CHANNEL = "com.example.pdf_merge/merge"
     private var intentChannel: MethodChannel? = null
+    private var mergeChannel: MethodChannel? = null
+    private val executor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -34,28 +40,34 @@ class MainActivity : FlutterActivity() {
         }
 
         // Merge channel for PDF merging
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MERGE_CHANNEL)
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "mergePdfs" -> {
-                        val paths = call.argument<List<String>>("paths")
-                        val output = call.argument<String>("output")
-                        if (paths != null && output != null) {
+        mergeChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MERGE_CHANNEL)
+        mergeChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "mergePdfs" -> {
+                    val paths = call.argument<List<String>>("paths")
+                    val output = call.argument<String>("output")
+                    if (paths != null && output != null) {
+                        // Execute merge in background thread to prevent UI freezing (ANR)
+                        executor.execute {
                             try {
-                                val success = mergePdfFiles(paths, output)
-                                result.success(success)
+                                val success = mergePdfFilesBackground(paths, output)
+                                mainHandler.post {
+                                    result.success(success)
+                                }
                             } catch (e: Exception) {
-                                result.error("MERGE_ERROR", e.message, null)
+                                mainHandler.post {
+                                    result.error("MERGE_ERROR", e.message, null)
+                                }
                             }
-                        } else {
-                            result.error("INVALID_ARGS", "Missing paths or output", null)
                         }
+                    } else {
+                        result.error("INVALID_ARGS", "Missing paths or output", null)
                     }
-                    else -> result.notImplemented()
                 }
+                else -> result.notImplemented()
             }
+        }
 
-        // Handle initial intent
         handleIntent(intent)
     }
 
@@ -102,7 +114,6 @@ class MainActivity : FlutterActivity() {
         try {
             val inputStream = contentResolver.openInputStream(uri) ?: return null
             
-            // Get filename from URI
             var fileName = "imported_${System.currentTimeMillis()}.pdf"
             val cursor = contentResolver.query(uri, null, null, null, null)
             cursor?.use {
@@ -131,15 +142,37 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun mergePdfFiles(inputPaths: List<String>, outputPath: String): Boolean {
+    private fun mergePdfFilesBackground(inputPaths: List<String>, outputPath: String): Boolean {
         try {
-            val document = PdfDocument()
-            var pageIndex = 1
+            // Step 1: Calculate total page count across all input files
+            var totalPages = 0
+            val validFiles = mutableListOf<String>()
 
             for (filePath in inputPaths) {
                 val file = File(filePath)
-                if (!file.exists()) continue
+                if (file.exists()) {
+                    validFiles.add(filePath)
+                    try {
+                        val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                        val renderer = PdfRenderer(pfd)
+                        totalPages += renderer.pageCount
+                        renderer.close()
+                        pfd.close()
+                    } catch (_: Exception) {}
+                }
+            }
 
+            if (totalPages == 0) return false
+
+            val document = PdfDocument()
+            var processedPages = 0
+
+            // Send initial progress
+            sendProgress(0, totalPages, 0)
+
+            // Step 2: Merge page by page with real-time progress events
+            for (filePath in validFiles) {
+                val file = File(filePath)
                 val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
                 val renderer = PdfRenderer(fileDescriptor)
 
@@ -149,12 +182,11 @@ class MainActivity : FlutterActivity() {
                     val pageInfo = PdfDocument.PageInfo.Builder(
                         sourcePage.width,
                         sourcePage.height,
-                        pageIndex
+                        processedPages + 1
                     ).create()
 
                     val destPage = document.startPage(pageInfo)
 
-                    // Create bitmap to render the PDF page onto
                     val bitmap = Bitmap.createBitmap(
                         sourcePage.width,
                         sourcePage.height,
@@ -173,14 +205,17 @@ class MainActivity : FlutterActivity() {
                     document.finishPage(destPage)
                     bitmap.recycle()
                     sourcePage.close()
-                    pageIndex++
+
+                    processedPages++
+                    val percent = ((processedPages.toDouble() / totalPages) * 100).toInt()
+                    sendProgress(processedPages, totalPages, percent)
                 }
 
                 renderer.close()
                 fileDescriptor.close()
             }
 
-            // Write to output file
+            // Step 3: Save to output file
             val outputFile = File(outputPath)
             outputFile.parentFile?.mkdirs()
             FileOutputStream(outputFile).use { output ->
@@ -188,10 +223,21 @@ class MainActivity : FlutterActivity() {
             }
             document.close()
 
+            sendProgress(totalPages, totalPages, 100)
             return true
         } catch (e: Exception) {
             e.printStackTrace()
             return false
+        }
+    }
+
+    private fun sendProgress(processed: Int, total: Int, percent: Int) {
+        mainHandler.post {
+            mergeChannel?.invokeMethod("onProgress", mapOf(
+                "processed" to processed,
+                "total" to total,
+                "percent" to percent
+            ))
         }
     }
 }
