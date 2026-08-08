@@ -306,7 +306,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => PdfViewerScreen(pdfFile: model),
+        pageBuilder: (_, __, ___) => PdfViewerScreen(
+          pdfFile: model,
+          allOpenedFiles: _openedFiles,
+        ),
         transitionsBuilder: (_, animation, __, child) {
           return SlideTransition(
             position: Tween<Offset>(
@@ -505,13 +508,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => MergeScreen(
           filesToMerge: List.from(_mergeQueue),
-          onMergeComplete: (mergedPath) async {
+          onMergeComplete: (mergedPath, sourceFiles) async {
             final model = await PdfFileModel.fromPath(mergedPath);
-            setState(() {
-              _openedFiles.add(model);
-              _isMergeMode = false;
-              _mergeQueue.clear();
-            });
+            if (mounted) {
+              setState(() {
+                // Filter out source files so only the final merged PDF is kept!
+                for (final src in sourceFiles) {
+                  _openedFiles.removeWhere((f) => f.path == src.path);
+                }
+                if (!_openedFiles.any((f) => f.path == model.path)) {
+                  _openedFiles.add(model);
+                }
+                _isMergeMode = false;
+                _mergeQueue.clear();
+              });
+              _openViewer(model);
+            }
           },
         ),
         transitionsBuilder: (_, animation, __, child) {

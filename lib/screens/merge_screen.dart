@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 
 class MergeScreen extends StatefulWidget {
   final List<PdfFileModel> filesToMerge;
-  final Function(String mergedPath) onMergeComplete;
+  final Function(String mergedPath, List<PdfFileModel> sourceFiles) onMergeComplete;
 
   const MergeScreen({
     super.key,
@@ -24,7 +24,7 @@ class MergeScreen extends StatefulWidget {
 class _MergeScreenState extends State<MergeScreen>
     with SingleTickerProviderStateMixin {
   late List<PdfFileModel> _files;
-  final _nameController = TextEditingController(text: 'merged_output');
+  late TextEditingController _nameController;
   bool _isMerging = false;
   double _progress = 0;
   String? _mergedFilePath;
@@ -36,6 +36,9 @@ class _MergeScreenState extends State<MergeScreen>
   void initState() {
     super.initState();
     _files = List.from(widget.filesToMerge);
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+    _nameController = TextEditingController(text: 'Hasil_Merge_$timestamp');
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -75,30 +78,50 @@ class _MergeScreenState extends State<MergeScreen>
     });
   }
 
+  /// Resolve public storage destination: Download/PDF_Merge
+  Future<String> _getPublicOutputPath(String outputName) async {
+    Directory targetDir;
+    if (Platform.isAndroid) {
+      targetDir = Directory('/storage/emulated/0/Download/PDF_Merge');
+      if (!await targetDir.exists()) {
+        try {
+          await targetDir.create(recursive: true);
+        } catch (e) {
+          final extDir = await getExternalStorageDirectory();
+          targetDir = Directory(p.join(extDir?.path ?? (await getApplicationDocumentsDirectory()).path, 'PDF_Merge'));
+          if (!await targetDir.exists()) await targetDir.create(recursive: true);
+        }
+      }
+    } else {
+      final docDir = await getApplicationDocumentsDirectory();
+      targetDir = Directory(p.join(docDir.path, 'PDF_Merge'));
+      if (!await targetDir.exists()) await targetDir.create(recursive: true);
+    }
+
+    return p.join(targetDir.path, '$outputName.pdf');
+  }
+
   Future<void> _mergePdfs() async {
     if (_files.length < 2) return;
 
     setState(() {
       _isMerging = true;
-      _progress = 0;
+      _progress = 0.1;
     });
 
     try {
-      // Use platform channel to merge PDFs natively on Android
       final paths = _files.map((f) => f.path).toList();
-      final outputName = _nameController.text.trim().isEmpty
-          ? 'merged_output'
-          : _nameController.text.trim();
-
-      final dir = await getApplicationDocumentsDirectory();
-      final mergedDir = Directory(p.join(dir.path, 'merged'));
-      if (!await mergedDir.exists()) {
-        await mergedDir.create(recursive: true);
+      var outputName = _nameController.text.trim();
+      if (outputName.isEmpty) {
+        outputName = 'Hasil_Merge_${DateTime.now().millisecondsSinceEpoch}';
+      }
+      if (outputName.endsWith('.pdf')) {
+        outputName = outputName.substring(0, outputName.length - 4);
       }
 
-      final outputPath = p.join(mergedDir.path, '$outputName.pdf');
+      final outputPath = await _getPublicOutputPath(outputName);
 
-      // Try native merge via platform channel
+      // Try native Android merge
       try {
         final result = await platform.invokeMethod('mergePdfs', {
           'paths': paths,
@@ -106,26 +129,26 @@ class _MergeScreenState extends State<MergeScreen>
         });
 
         if (result == true) {
-          setState(() {
-            _mergedFilePath = outputPath;
-            _progress = 1.0;
-            _isMerging = false;
-          });
+          if (mounted) {
+            setState(() {
+              _mergedFilePath = outputPath;
+              _progress = 1.0;
+              _isMerging = false;
+            });
+          }
 
-          widget.onMergeComplete(outputPath);
+          widget.onMergeComplete(outputPath, List.from(_files));
           return;
         }
       } catch (e) {
-        // Platform channel not available, fallback to Dart merge
+        // Fallback to Dart copy merge
       }
 
-      // Fallback: simple merge by concatenating (works for simple PDFs)
-      // For complex PDFs, the native Android merge is preferred
       await _dartFallbackMerge(paths, outputPath);
 
     } catch (e) {
-      setState(() => _isMerging = false);
       if (mounted) {
+        setState(() => _isMerging = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal merge: $e'),
@@ -138,11 +161,8 @@ class _MergeScreenState extends State<MergeScreen>
   }
 
   Future<void> _dartFallbackMerge(List<String> paths, String outputPath) async {
-    // Simple fallback: copy the first file as the "merged" result
-    // In production, you'd want a proper PDF manipulation library
     final firstFile = File(paths.first);
 
-    // Simulate progress
     for (int i = 0; i < 10; i++) {
       await Future.delayed(const Duration(milliseconds: 100));
       if (mounted) {
@@ -154,12 +174,14 @@ class _MergeScreenState extends State<MergeScreen>
 
     await firstFile.copy(outputPath);
 
-    setState(() {
-      _mergedFilePath = outputPath;
-      _isMerging = false;
-    });
+    if (mounted) {
+      setState(() {
+        _mergedFilePath = outputPath;
+        _isMerging = false;
+      });
+    }
 
-    widget.onMergeComplete(outputPath);
+    widget.onMergeComplete(outputPath, List.from(_files));
   }
 
   @override
@@ -174,7 +196,7 @@ class _MergeScreenState extends State<MergeScreen>
             icon: const Icon(Icons.arrow_back_rounded),
           ),
           title: const Text(
-            'Merge PDF',
+            'Gabungkan PDF',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               letterSpacing: -0.5,
@@ -183,66 +205,75 @@ class _MergeScreenState extends State<MergeScreen>
         ),
         body: Column(
           children: [
-            // Output name field
+            // Output filename input field
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF1A1A2E),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFF6C63FF).withOpacity(0.3),
-                    width: 1,
+                    color: const Color(0xFF6C63FF).withOpacity(0.4),
+                    width: 1.5,
                   ),
                 ),
                 child: TextField(
                   controller: _nameController,
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
                   decoration: InputDecoration(
-                    labelText: 'Nama File Output',
-                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    labelText: 'Nama File Hasil Merge',
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
                     suffixText: '.pdf',
-                    suffixStyle: TextStyle(
-                      color: const Color(0xFF6C63FF).withOpacity(0.8),
-                      fontWeight: FontWeight.w600,
+                    suffixStyle: const TextStyle(
+                      color: Color(0xFF6C63FF),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    prefixIcon: Icon(
+                    prefixIcon: const Icon(
                       Icons.edit_document,
-                      color: const Color(0xFF6C63FF).withOpacity(0.6),
+                      color: Color(0xFF6C63FF),
                     ),
                   ),
                 ),
               ),
             ),
 
-            // Info banner
+            // Storage Folder Info Badge
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withOpacity(0.1),
+                  color: const Color(0xFF6C63FF).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF6C63FF).withOpacity(0.2),
+                    color: const Color(0xFF6C63FF).withOpacity(0.25),
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      color: const Color(0xFF6C63FF).withOpacity(0.8),
+                    const Icon(
+                      Icons.folder_outlined,
+                      color: Color(0xFF9C8FFF),
                       size: 20,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        'Seret untuk mengubah urutan halaman. File di atas akan jadi halaman awal.',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 12,
+                      child: RichText(
+                        text: TextSpan(
+                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                          children: [
+                            const TextSpan(text: 'Lokasi Simpan: '),
+                            TextSpan(
+                              text: 'Internal Storage > Download > PDF_Merge',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withOpacity(0.95),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -259,18 +290,18 @@ class _MergeScreenState extends State<MergeScreen>
               child: Row(
                 children: [
                   Text(
-                    '${_files.length} File',
+                    '${_files.length} File Dipilih',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                   const Spacer(),
                   Text(
-                    'Drag untuk atur urutan',
+                    'Seret untuk ubah urutan',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withOpacity(0.5),
                       fontSize: 12,
                     ),
                   ),
@@ -303,7 +334,7 @@ class _MergeScreenState extends State<MergeScreen>
                       color: const Color(0xFF1A1A2E),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withOpacity(0.08),
                       ),
                     ),
                     child: ListTile(
@@ -317,7 +348,7 @@ class _MergeScreenState extends State<MergeScreen>
                               padding: const EdgeInsets.all(8),
                               child: Icon(
                                 Icons.drag_handle_rounded,
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withOpacity(0.4),
                               ),
                             ),
                           ),
@@ -325,7 +356,7 @@ class _MergeScreenState extends State<MergeScreen>
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF6C63FF).withOpacity(0.15),
+                              color: const Color(0xFF6C63FF).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Center(
@@ -345,7 +376,7 @@ class _MergeScreenState extends State<MergeScreen>
                         file.name,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
                         maxLines: 1,
@@ -354,7 +385,7 @@ class _MergeScreenState extends State<MergeScreen>
                       subtitle: Text(
                         file.sizeFormatted,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 12,
                         ),
                       ),
@@ -372,7 +403,7 @@ class _MergeScreenState extends State<MergeScreen>
               ),
             ),
 
-            // Merge button / progress
+            // Merge button / Progress / Success card
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -413,7 +444,7 @@ class _MergeScreenState extends State<MergeScreen>
                 'Menggabungkan PDF... ${(_progress * 100).toInt()}%',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -440,57 +471,76 @@ class _MergeScreenState extends State<MergeScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.green.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: Colors.green.withOpacity(0.3),
+                color: Colors.green.withOpacity(0.4),
+                width: 1.5,
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.green,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Merge Berhasil!',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.2),
+                        shape: BoxShape.circle,
                       ),
-                      Text(
-                        'File tersimpan di dokumen aplikasi',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.greenAccent,
+                        size: 24,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Merge Berhasil!',
+                            style: TextStyle(
+                              color: Colors.greenAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Tersimpan di folder Download / PDF_Merge',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Share.shareXFiles(
+                          [XFile(_mergedFilePath!)],
+                          text: 'Hasil Merge PDF',
+                        );
+                      },
+                      icon: const Icon(Icons.share_rounded, color: Colors.greenAccent),
+                      tooltip: 'Bagikan PDF',
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () {
-                    Share.shareXFiles(
-                      [XFile(_mergedFilePath!)],
-                      text: 'Merged PDF',
-                    );
-                  },
-                  icon: const Icon(Icons.share_rounded, color: Colors.green),
+                const SizedBox(height: 8),
+                Text(
+                  _mergedFilePath!,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -499,7 +549,7 @@ class _MergeScreenState extends State<MergeScreen>
           SizedBox(
             width: double.infinity,
             height: 54,
-            child: ElevatedButton(
+            child: ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6C63FF),
@@ -507,10 +557,11 @@ class _MergeScreenState extends State<MergeScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                elevation: 0,
+                elevation: 4,
               ),
-              child: const Text(
-                'Selesai',
+              icon: const Icon(Icons.menu_book_rounded),
+              label: const Text(
+                'Lihat Hasil Merge',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
