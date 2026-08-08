@@ -1,11 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import '../models/pdf_file_model.dart';
-import '../services/intent_handler.dart';
 import '../widgets/pdf_card.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/empty_state.dart';
@@ -53,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (call.method == 'onNewIntent') {
         final paths = (call.arguments as List?)?.cast<String>() ?? [];
         for (final path in paths) {
-          await _addPdfFile(path);
+          await _handleIncomingPdfPath(path);
         }
       }
     });
@@ -64,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final result = await platform.invokeMethod('getInitialIntent');
       if (result != null && result is List) {
         for (final path in result.cast<String>()) {
-          await _addPdfFile(path);
+          await _handleIncomingPdfPath(path);
         }
       }
     } catch (e) {
@@ -72,24 +68,238 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _addPdfFile(String path) async {
-    // Check if file already opened
-    if (_openedFiles.any((f) => f.path == path)) {
-      // Navigate to existing file
-      final existing = _openedFiles.firstWhere((f) => f.path == path);
-      _openViewer(existing);
-      return;
-    }
-
+  Future<void> _handleIncomingPdfPath(String path) async {
     final model = await PdfFileModel.fromPath(path);
-    setState(() {
-      _openedFiles.add(model);
-    });
-
-    // Auto open the viewer
-    if (mounted) {
-      _openViewer(model);
+    if (!_openedFiles.any((f) => f.path == path)) {
+      setState(() {
+        _openedFiles.add(model);
+      });
     }
+
+    if (mounted) {
+      _showOptionModal(model);
+    }
+  }
+
+  /// Show modal sheet with choice: "Baca PDF" or "Gabungkan (Merge) PDF"
+  void _showOptionModal(PdfFileModel file) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6C63FF).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.picture_as_pdf_rounded,
+                      color: Color(0xFF6C63FF),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          file.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Pilih aksi yang ingin dilakukan:',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Option 1: Baca PDF
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  _openViewer(file);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6C63FF).withOpacity(0.2),
+                        const Color(0xFF6C63FF).withOpacity(0.08),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF6C63FF).withOpacity(0.4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF6C63FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '📖 Baca PDF Ini',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Buka langsung untuk membaca dokumen',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 2: Gabungkan (Merge) PDF
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isMergeMode = true;
+                    if (!_mergeQueue.contains(file)) {
+                      _mergeQueue.add(file);
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.merge_type_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '🔗 Tambahkan ke Merge PDF',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Pilih file lain dan gabungkan menjadi 1 file PDF',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _openViewer(PdfFileModel model) {
@@ -120,6 +330,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       );
 
       if (result != null && result.files.isNotEmpty) {
+        final addedList = <PdfFileModel>[];
         for (final file in result.files) {
           if (file.path != null) {
             final model = await PdfFileModel.fromPath(file.path!);
@@ -128,7 +339,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 _openedFiles.add(model);
               });
             }
+            addedList.add(model);
           }
+        }
+
+        if (addedList.length == 1 && mounted) {
+          _showOptionModal(addedList.first);
         }
       }
     } catch (e) {
@@ -149,7 +365,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _mergeQueue.clear();
     });
 
-    // Re-trigger fab animation
     _fabAnimController.reset();
     _fabAnimController.forward();
   }
@@ -250,9 +465,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _isMergeMode ? 'Pilih File untuk Merge' : 'PDF Merge',
+            _isMergeMode ? 'Pilih File untuk Merge' : 'PDF Merge & Reader',
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               letterSpacing: -0.5,
             ),
@@ -294,7 +509,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ] else if (_openedFiles.isNotEmpty) ...[
           _buildActionButton(
             icon: Icons.merge_type_rounded,
-            label: 'Merge',
+            label: 'Mode Merge',
             color: const Color(0xFF6C63FF),
             onTap: _toggleMergeMode,
           ),
@@ -380,7 +595,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (_isMergeMode) {
                 _toggleFileInMergeQueue(file);
               } else {
-                _openViewer(file);
+                _showOptionModal(file);
               }
             },
             onDismissed: () => _removeFile(file),
@@ -410,5 +625,3 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
-
-

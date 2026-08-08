@@ -17,6 +17,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   int _totalPages = 0;
   int _currentPage = 0;
   bool _isReady = false;
+  bool _nightMode = false; // Default false to preserve original document colors
   PDFViewController? _pdfController;
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -48,10 +49,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     });
   }
 
+  void _toggleNightMode() {
+    setState(() {
+      _nightMode = !_nightMode;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
+      backgroundColor: _nightMode ? const Color(0xFF0D0D1A) : const Color(0xFF1E1E1E),
       body: Stack(
         children: [
           // PDF View
@@ -60,6 +67,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: PDFView(
+                key: ValueKey('pdf_view_${widget.pdfFile.id}_$_nightMode'),
                 filePath: widget.pdfFile.path,
                 enableSwipe: true,
                 swipeHorizontal: false,
@@ -67,7 +75,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 pageFling: true,
                 pageSnap: true,
                 fitPolicy: FitPolicy.BOTH,
-                nightMode: true,
+                nightMode: _nightMode,
                 onRender: (pages) {
                   setState(() {
                     _totalPages = pages!;
@@ -94,7 +102,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             ),
           ),
 
-          // Top bar with back button and title
+          // Top bar with back button, title, night mode toggle, and share
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
@@ -152,6 +160,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                           ],
                         ),
                       ),
+                      // Night mode toggle button
+                      IconButton(
+                        onPressed: _toggleNightMode,
+                        icon: Icon(
+                          _nightMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        ),
+                        color: _nightMode ? const Color(0xFF6C63FF) : Colors.amber,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.1),
+                        ),
+                        tooltip: _nightMode ? 'Mode Terang' : 'Mode Gelap',
+                      ),
+                      const SizedBox(width: 8),
                       // Share button
                       IconButton(
                         onPressed: () {

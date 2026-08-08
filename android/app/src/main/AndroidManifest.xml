@@ -30,12 +30,34 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Intent filter to handle PDF files opened from file manager -->
+            <!-- Comprehensive Intent filters for viewing PDF files from all Android file managers -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:mimeType="application/pdf"/>
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:mimeType="application/pdf"/>
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:host="*"/>
+                <data android:pathPattern=".*\\.pdf"/>
+                <data android:pathPattern=".*\\..*\\.pdf"/>
+                <data android:pathPattern=".*\\..*\\..*\\.pdf"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.pdf"/>
             </intent-filter>
 
             <!-- Intent filter to handle SEND intent for PDF files -->

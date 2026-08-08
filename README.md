@@ -1,79 +1,88 @@
-# 📄 PDF Merge & Viewer (Android)
+# 📄 PDF Merge & Reader (Android)
 
-Aplikasi Android berbasis Flutter untuk **menggabungkan (merge) beberapa file PDF menjadi 1 file** serta **membaca banyak file PDF sekaligus** tanpa menutup file sebelumnya.
+![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Android](https://img.shields.io/badge/Android-5.0+-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
+
+Aplikasi Android modern berbasis Flutter untuk **menggabungkan (merge) beberapa file PDF menjadi 1 file** dan **membaca dokumen PDF dengan warna asli** serta dukungan penuh integrasi File Manager Android.
 
 ---
 
 ## 📥 Download Aplikasi (.apk)
 
-Kamu bisa mendownload file `.apk` siap install melalui tautan di bawah ini:
+Dapatkan file `.apk` siap install langsung dari GitHub Releases:
 
-| Versi | Download Link | Status |
-|-------|---------------|--------|
-| **Latest Release (APK)** | [![Download APK](https://img.shields.io/badge/Download-APK-6C63FF?style=for-the-badge&logo=android&logoColor=white)](https://github.com/DeruDJ22/pdf_merge/releases/latest) | `v1.0.0` |
-
-*(Catatan: Ganti `USERNAME/REPO_NAME` pada URL di atas dengan nama username & repository GitHub kamu)*
+<p align="center">
+  <a href="https://github.com/DeruDJ22/pdf_merge/releases/latest">
+    <img src="https://img.shields.io/badge/Download-Latest%20APK-6C63FF?style=for-the-badge&logo=android&logoColor=white" height="50" alt="Download APK" />
+  </a>
+</p>
 
 ---
 
 ## ✨ Fitur Utama
 
-- 🔗 **Merge Banyak PDF**: Gabungkan 2 atau lebih file PDF menjadi 1 file PDF baru.
-- 🖐️ **Drag & Drop Reorder**: Ubah urutan halaman PDF dengan mudah sebelum digabungkan.
-- 📱 **Integrasi Intent Android**: Buka PDF langsung dari File Manager HP. Aplikasi akan otomatis muncul di opsi *"Buka dengan..."* atau *"Share ke..."*.
-- 📂 **Multi-File Viewer**: Buka banyak file PDF secara berurutan tanpa menutup file sebelumnya.
-- 🌙 **Night Mode PDF Viewer**: Mode gelap otomatis saat membaca PDF agar nyaman di mata.
-- 📤 **Share Langsung**: Bagikan hasil merge atau file PDF langsung dari aplikasi.
+- 🔗 **Merge Banyak PDF**: Gabungkan 2 atau lebih file PDF menjadi 1 file PDF baru berkecepatan tinggi menggunakan Native Android `PdfDocument` API.
+- 🔀 **Modal Dialog Pilihan Aksi**: Saat memilih/membuka file PDF, muncul pilihan:
+  - 📖 **Baca PDF Ini**: Buka tampilan membaca langsung.
+  - 🔗 **Tambahkan ke Merge**: Masukkan file ke antrean penggabungan.
+- 🖐️ **Drag & Drop Reorder**: Geser dan atur urutan file PDF sebelum digabungkan.
+- 🎨 **Tampilan Warna Asli**: PDF ditampilkan dengan presisi warna asli (bebas bug warna terbalik/inversi).
+- ☀️/🌙 **Toggle Mode Gelap/Terang**: Bebas ganti mode tampilan membaca kapan saja.
+- 📱 **Dukungan Penuh File Manager Android**: Muncul di opsi *"Buka dengan..."* (Open With) pada semua File Manager (Xiaomi/Miui, Samsung My Files, Files by Google, Oppo, dll).
+- 📂 **Multi-File Queue**: Buka banyak PDF secara fleksibel tanpa menutup file sebelumnya.
+- 📤 **Share Langsung**: Bagikan hasil gabungan PDF ke WhatsApp, Telegram, Email, atau aplikasi lainnya.
 
 ---
 
-## 🚀 Cara Otomatis (Via GitHub Actions)
+## 🏗️ Alur Penggunaan
 
-Proyek ini sudah dilengkapi dengan **GitHub Actions Workflow** (`.github/workflows/build.yml`). 
+```
+File Manager / App ➔ [ Pilih PDF ] ➔ Modal Sheet ➔ ┬➔ [ 📖 Baca PDF ] ➔ Reader (Warna Asli)
+                                                  └➔ [ 🔗 Tambahkan ke Merge ] ➔ Drag & Drop ➔ Export PDF
+```
 
-Setiap kali kamu mem-push kode ke GitHub atau membuat tag release (`v1.0.0`), GitHub akan **otomatis me-render & membuatkan file `.apk`** di menu **Releases / Actions** repository kamu!
+---
 
-### Langkah Push ke GitHub:
+## 🚀 Otomatisasi Release (GitHub Actions)
+
+Proyek ini sudah dikonfigurasi dengan **GitHub Actions CI/CD** (`.github/workflows/build.yml`). Setiap kali kamu melakukan `push` ke branch `main`, GitHub akan **otomatis mem-build file APK rilis** dan mempublikasikannya ke halaman **Releases**.
+
+### Perintah Push ke GitHub:
 
 ```bash
-git init
 git add .
-git commit -m "feat: PDF Merge & Viewer App v1.0.0"
-git branch -M main
-git remote add origin https://github.com/DeruDJ22/pdf_merge.git
-git push -u origin main
+git commit -m "feat: update PDF Merge & Reader"
+git push origin main
 ```
 
-Untuk membuat **Release Resmi** dengan tombol download otomatis:
+---
+
+## 🛠️ Build APK Lokal (Manual)
+
+Jika ingin mem-build APK di komputer sendiri:
+
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+# Get dependencies
+flutter pub get
+
+# Build Release APK
+flutter build apk --release
 ```
 
----
-
-## 🛠️ Cara Manual (Build APK di Lokal)
-
-Jika ingin mem-build APK secara manual di komputer kamu:
-
-1. Pastikan Flutter SDK sudah terinstall.
-2. Jalankan perintah build:
-   ```bash
-   flutter build apk --release
-   ```
-3. File APK akan dihasilkan di lokasi:
-   `build/app/outputs/flutter-apk/app-release.apk`
+File APK tersimpan di:  
+📁 `build/app/outputs/flutter-apk/app-release.apk`
 
 ---
 
-## 💻 Spesifikasi Teknis
+## 💻 Teknologi & Spesifikasi
 
-- **Framework**: Flutter 3.x (Dart)
-- **Min SDK**: Android 21 (Android 5.0 Lollipop+)
+- **Framework**: Flutter (Dart)
+- **Engine Native**: Kotlin (`android.graphics.pdf.PdfDocument` & `PdfRenderer`)
+- **Min SDK**: Android 21 (Lollipop 5.0+)
 - **Target SDK**: Android 34 / Latest
-- **Native API**: Android `PdfDocument` & `PdfRenderer`
-- **UI Theme**: Material 3 Dark Theme dengan Google Fonts Inter
+- **Desain UI**: Material 3 Dark Glassmorphism, Google Fonts (Inter)
 
 ---
 
-Developed with ❤️ using Flutter & Android Native APIs.
+Developed with ❤️ for Android.
