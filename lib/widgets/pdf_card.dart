@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/pdf_file_model.dart';
 
 class PdfCard extends StatefulWidget {
@@ -26,6 +28,8 @@ class PdfCard extends StatefulWidget {
 class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+  String? _thumbnailPath;
+  static const _platform = MethodChannel('com.example.pdf_merge/merge');
 
   @override
   void initState() {
@@ -39,6 +43,21 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
       curve: Curves.elasticOut,
     );
     _controller.forward();
+
+    _loadThumbnail();
+  }
+
+  Future<void> _loadThumbnail() async {
+    try {
+      final path = await _platform.invokeMethod<String>('renderThumbnail', {
+        'path': widget.pdfFile.path,
+      });
+      if (path != null && mounted) {
+        setState(() {
+          _thumbnailPath = path;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -49,6 +68,8 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final hasThumbnail = _thumbnailPath != null && File(_thumbnailPath!).existsSync();
+
     return ScaleTransition(
       scale: _scaleAnimation,
       child: Dismissible(
@@ -86,7 +107,7 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: widget.isSelected
                   ? const Color(0xFF6C63FF).withOpacity(0.15)
@@ -109,52 +130,84 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
             ),
             child: Row(
               children: [
-                // PDF icon / merge order badge
+                // PDF Cover Thumbnail or Icon / Merge order badge
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
-                  width: 48,
-                  height: 48,
+                  width: 50,
+                  height: 62,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: widget.isSelected
-                          ? [
-                              const Color(0xFF6C63FF),
-                              const Color(0xFF9C8FFF),
-                            ]
-                          : [
-                              const Color(0xFFE74C3C).withOpacity(0.8),
-                              const Color(0xFFFF6B6B).withOpacity(0.8),
-                            ],
-                    ),
+                    color: const Color(0xFF161626),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: (widget.isSelected
                                 ? const Color(0xFF6C63FF)
                                 : const Color(0xFFE74C3C))
-                            .withOpacity(0.3),
+                            .withOpacity(0.25),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: widget.isMergeMode && widget.mergeOrder != null
-                        ? Text(
-                            '${widget.mergeOrder}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Stack(
+                      children: [
+                        if (hasThumbnail)
+                          Positioned.fill(
+                            child: Image.file(
+                              File(_thumbnailPath!),
+                              fit: BoxFit.cover,
                             ),
                           )
-                        : const Icon(
-                            Icons.picture_as_pdf_rounded,
-                            color: Colors.white,
-                            size: 24,
+                        else
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: widget.isSelected
+                                    ? [
+                                        const Color(0xFF6C63FF),
+                                        const Color(0xFF9C8FFF),
+                                      ]
+                                    : [
+                                        const Color(0xFFE74C3C).withOpacity(0.8),
+                                        const Color(0xFFFF6B6B).withOpacity(0.8),
+                                      ],
+                              ),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.picture_as_pdf_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
                           ),
+
+                        // Merge mode order badge overlay
+                        if (widget.isMergeMode && widget.mergeOrder != null)
+                          Positioned.fill(
+                            child: Container(
+                              color: const Color(0xFF6C63FF).withOpacity(0.85),
+                              child: Center(
+                                child: Text(
+                                  '${widget.mergeOrder}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
 

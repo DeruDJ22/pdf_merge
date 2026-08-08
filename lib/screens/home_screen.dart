@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final List<PdfFileModel> _mergeQueue = [];
   bool _isMergeMode = false;
   String _searchQuery = '';
+  String _sortOrder = 'recent'; // 'recent', 'name', 'size', 'progress'
   final TextEditingController _searchController = TextEditingController();
 
   late AnimationController _fabAnimController;
@@ -97,10 +98,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Filter files based on search query
   List<PdfFileModel> get _filteredFiles {
-    if (_searchQuery.trim().isEmpty) return _openedFiles;
+    if (_searchQuery.trim().isEmpty) return List.from(_openedFiles);
     return _openedFiles
         .where((f) => f.name.toLowerCase().contains(_searchQuery.toLowerCase().trim()))
         .toList();
+  }
+
+  /// Sort and filter files
+  List<PdfFileModel> get _sortedAndFilteredFiles {
+    final list = _filteredFiles;
+    if (_sortOrder == 'name') {
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else if (_sortOrder == 'size') {
+      list.sort((a, b) => b.sizeBytes.compareTo(a.sizeBytes));
+    } else if (_sortOrder == 'progress') {
+      list.sort((a, b) => b.progressPercentage.compareTo(a.progressPercentage));
+    }
+    return list;
   }
 
   /// Show modal sheet with choice: "Baca PDF" or "Gabungkan (Merge) PDF"
@@ -126,7 +140,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle bar
               Center(
                 child: Container(
                   width: 40,
@@ -139,7 +152,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 20),
 
-              // Title
               Row(
                 children: [
                   Container(
@@ -184,7 +196,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 24),
 
-              // Option 1: Baca PDF
               InkWell(
                 onTap: () {
                   Navigator.pop(context);
@@ -251,7 +262,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               const SizedBox(height: 12),
 
-              // Option 2: Gabungkan (Merge) PDF
               InkWell(
                 onTap: () {
                   Navigator.pop(context);
@@ -346,12 +356,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           transitionDuration: const Duration(milliseconds: 400),
         ),
       );
-      // Reload history on return to update reading progress
       _loadSavedHistory();
     }
   }
 
-  /// Triggered from Reader Mode Card
   Future<void> _pickAndReadPdf() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -383,7 +391,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  /// Triggered from Merge Mode Card
   Future<void> _pickAndMergePdfs() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -575,7 +582,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             final model = await PdfFileModel.fromPath(mergedPath);
             await HistoryService.addOrUpdateFile(model);
 
-            // Filter out source files
             for (final src in sourceFiles) {
               await HistoryService.removeFile(src.path);
             }
@@ -734,56 +740,191 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildDashboardStats() {
+    final total = _openedFiles.length;
+    final completed = _openedFiles.where((f) => f.totalPages > 0 && f.lastReadPage + 1 >= f.totalPages).length;
+    final inProgress = total - completed;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A2E).withOpacity(0.8),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatChip(
+              icon: Icons.library_books_rounded,
+              label: '$total Dokumen',
+              color: const Color(0xFF6C63FF),
+            ),
+            Container(width: 1, height: 18, color: Colors.white.withOpacity(0.1)),
+            _buildStatChip(
+              icon: Icons.check_circle_rounded,
+              label: '$completed Selesai',
+              color: Colors.greenAccent,
+            ),
+            Container(width: 1, height: 18, color: Colors.white.withOpacity(0.1)),
+            _buildStatChip(
+              icon: Icons.auto_stories_rounded,
+              label: '$inProgress Dibaca',
+              color: const Color(0xFF9C8FFF),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBodyContent() {
-    final filtered = _filteredFiles;
+    final sortedList = _sortedAndFilteredFiles;
 
     return Column(
       children: [
-        // Search Bar Widget
+        // Dashboard Stats Bar
+        _buildDashboardStats(),
+
+        // Search Bar & Sort Dropdown
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Container(
-            height: 46,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A2E),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Cari file PDF di riwayat...',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                      prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.5), size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val;
-                });
-              },
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Cari file PDF di riwayat...',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.5), size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 8),
+
+              // Sort menu button
+              Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A2E),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: PopupMenuButton<String>(
+                  initialValue: _sortOrder,
+                  icon: const Icon(Icons.sort_rounded, color: Color(0xFF9C8FFF), size: 22),
+                  tooltip: 'Urutkan Riwayat',
+                  color: const Color(0xFF1A1A2E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  onSelected: (value) {
+                    setState(() {
+                      _sortOrder = value;
+                    });
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'recent',
+                      child: Row(
+                        children: [
+                          Icon(Icons.history_rounded, color: Colors.white70, size: 18),
+                          SizedBox(width: 10),
+                          Text('Terbaru Dibuka', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'name',
+                      child: Row(
+                        children: [
+                          Icon(Icons.sort_by_alpha_rounded, color: Colors.white70, size: 18),
+                          SizedBox(width: 10),
+                          Text('Nama File (A-Z)', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'size',
+                      child: Row(
+                        children: [
+                          Icon(Icons.data_usage_rounded, color: Colors.white70, size: 18),
+                          SizedBox(width: 10),
+                          Text('Ukuran File', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'progress',
+                      child: Row(
+                        children: [
+                          Icon(Icons.auto_stories_rounded, color: Colors.white70, size: 18),
+                          SizedBox(width: 10),
+                          Text('Progres Membaca', style: TextStyle(color: Colors.white, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
 
         // File List
         Expanded(
-          child: filtered.isEmpty
+          child: sortedList.isEmpty
               ? Center(
                   child: Text(
                     'File "$_searchQuery" tidak ditemukan',
@@ -793,48 +934,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               : AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child: ReorderableListView.builder(
-                    key: ValueKey(_isMergeMode),
+                    key: ValueKey('$_isMergeMode$_sortOrder'),
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                    itemCount: filtered.length,
+                    itemCount: sortedList.length,
                     onReorder: _reorderFiles,
                     proxyDecorator: (child, index, animation) {
-                      return AnimatedBuilder(
-                        animation: animation,
-                        builder: (context, child) {
-                          final scale = Tween<double>(begin: 1.0, end: 1.05)
-                              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
-                          return Transform.scale(
-                            scale: scale.value,
-                            child: Material(
-                              color: Colors.transparent,
-                              elevation: 8,
-                              borderRadius: BorderRadius.circular(16),
-                              child: child,
-                            ),
-                          );
-                        },
+                      return Material(
+                        color: Colors.transparent,
+                        elevation: 8,
+                        borderRadius: BorderRadius.circular(16),
                         child: child,
                       );
                     },
                     itemBuilder: (context, index) {
-                      final file = filtered[index];
-                      final isSelected = _mergeQueue.contains(file);
-                      final mergeIndex = _mergeQueue.indexOf(file);
+                      final pdfFile = sortedList[index];
+                      final isSelected = _mergeQueue.contains(pdfFile);
+                      final mergeOrder = isSelected ? _mergeQueue.indexOf(pdfFile) + 1 : null;
 
                       return PdfCard(
-                        key: ValueKey(file.id),
-                        pdfFile: file,
+                        key: ValueKey('card_${pdfFile.id}'),
+                        pdfFile: pdfFile,
                         isMergeMode: _isMergeMode,
                         isSelected: isSelected,
-                        mergeOrder: mergeIndex >= 0 ? mergeIndex + 1 : null,
+                        mergeOrder: mergeOrder,
                         onTap: () {
                           if (_isMergeMode) {
-                            _toggleFileInMergeQueue(file);
+                            _toggleFileInMergeQueue(pdfFile);
                           } else {
-                            _showOptionModal(file);
+                            _showOptionModal(pdfFile);
                           }
                         },
-                        onDismissed: () => _removeFile(file),
+                        onDismissed: () => _removeFile(pdfFile),
                       );
                     },
                   ),
@@ -847,18 +977,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildFab() {
     return ScaleTransition(
       scale: _fabScaleAnimation,
-      child: FloatingActionButton.extended(
-        onPressed: _pickPdfFiles,
-        icon: const Icon(Icons.add_rounded, size: 24),
-        label: const Text(
-          'Tambah PDF',
-          style: TextStyle(fontWeight: FontWeight.w600),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6C63FF).withOpacity(0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFF6C63FF),
-        foregroundColor: Colors.white,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+        child: FloatingActionButton.extended(
+          onPressed: _pickPdfFiles,
+          backgroundColor: const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          highlightElevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: const Icon(Icons.add_rounded, size: 24),
+          label: const Text(
+            'Buka / Impor PDF',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              letterSpacing: -0.2,
+            ),
+          ),
         ),
       ),
     );

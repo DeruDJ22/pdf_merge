@@ -39,7 +39,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // Merge channel for PDF merging
+        // Merge & Thumbnail channel
         mergeChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MERGE_CHANNEL)
         mergeChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -47,7 +47,6 @@ class MainActivity : FlutterActivity() {
                     val paths = call.argument<List<String>>("paths")
                     val output = call.argument<String>("output")
                     if (paths != null && output != null) {
-                        // Execute merge in background thread to prevent UI freezing (ANR)
                         executor.execute {
                             try {
                                 val success = mergePdfFilesBackground(paths, output)
@@ -62,6 +61,19 @@ class MainActivity : FlutterActivity() {
                         }
                     } else {
                         result.error("INVALID_ARGS", "Missing paths or output", null)
+                    }
+                }
+                "renderThumbnail" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        executor.execute {
+                            val thumbPath = generateThumbnail(path)
+                            mainHandler.post {
+                                result.success(thumbPath)
+                            }
+                        }
+                    } else {
+                        result.error("INVALID_PATH", "Path is null", null)
                     }
                 }
                 else -> result.notImplemented()
@@ -142,9 +154,52 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun generateThumbnail(pdfPath: String): String? {
+        try {
+            val file = File(pdfPath)
+            if (!file.exists()) return null
+
+            val thumbDir = File(cacheDir, "pdf_thumbnails")
+            if (!thumbDir.exists()) thumbDir.mkdirs()
+
+            val thumbFile = File(thumbDir, "${file.absolutePath.hashCode()}.png")
+            if (thumbFile.exists() && thumbFile.length() > 0) {
+                return thumbFile.absolutePath
+            }
+
+            val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val renderer = PdfRenderer(pfd)
+            if (renderer.pageCount == 0) {
+                renderer.close()
+                pfd.close()
+                return null
+            }
+
+            val page = renderer.openPage(0)
+            val width = 200
+            val height = ((width * page.height.toDouble()) / page.width).toInt().coerceIn(150, 300)
+
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+
+            FileOutputStream(thumbFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 85, out)
+            }
+
+            bitmap.recycle()
+            page.close()
+            renderer.close()
+            pfd.close()
+
+            return thumbFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+    }
+
     private fun mergePdfFilesBackground(inputPaths: List<String>, outputPath: String): Boolean {
         try {
-            // Step 1: Calculate total page count across all input files
             var totalPages = 0
             val validFiles = mutableListOf<String>()
 
@@ -167,10 +222,8 @@ class MainActivity : FlutterActivity() {
             val document = PdfDocument()
             var processedPages = 0
 
-            // Send initial progress
             sendProgress(0, totalPages, 0)
 
-            // Step 2: Merge page by page with real-time progress events
             for (filePath in validFiles) {
                 val file = File(filePath)
                 val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
@@ -215,7 +268,6 @@ class MainActivity : FlutterActivity() {
                 fileDescriptor.close()
             }
 
-            // Step 3: Save to output file
             val outputFile = File(outputPath)
             outputFile.parentFile?.mkdirs()
             FileOutputStream(outputFile).use { output ->
