@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:file_picker/file_picker.dart';
@@ -33,6 +34,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   PDFViewController? _pdfController;
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
+  Timer? _autoHideTimer;
+
+  // Pointer tracking for tap detection on native PDF View
+  DateTime? _tapDownTime;
+  Offset? _tapDownPosition;
 
   @override
   void initState() {
@@ -56,10 +62,24 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       curve: Curves.easeInOut,
     );
     _animController.forward();
+
+    _scheduleAutoHideControls();
+  }
+
+  void _scheduleAutoHideControls() {
+    _autoHideTimer?.cancel();
+    _autoHideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _showControls && !_showGridOverview) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _autoHideTimer?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -72,7 +92,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         _activeTabIndex = index;
         _isReady = false;
         _showGridOverview = false;
+        _showControls = true;
       });
+      _scheduleAutoHideControls();
     }
   }
 
@@ -108,7 +130,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 _openedTabs.add(model);
                 _activeTabIndex = _openedTabs.length - 1;
                 _isReady = false;
+                _showControls = true;
               });
+              _scheduleAutoHideControls();
             } else {
               final existingIndex = _openedTabs.indexWhere((f) => f.path == model.path);
               _switchTab(existingIndex);
@@ -132,6 +156,28 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     setState(() {
       _showControls = !_showControls;
     });
+    if (_showControls) {
+      _scheduleAutoHideControls();
+    } else {
+      _autoHideTimer?.cancel();
+    }
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _tapDownTime = DateTime.now();
+    _tapDownPosition = event.position;
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    if (_tapDownTime != null && _tapDownPosition != null) {
+      final duration = DateTime.now().difference(_tapDownTime!);
+      final distance = (event.position - _tapDownPosition!).distance;
+
+      // If tap lasted < 300ms and moved < 15px, treat as a single screen tap!
+      if (duration.inMilliseconds < 300 && distance < 15) {
+        _toggleControls();
+      }
+    }
   }
 
   void _toggleNightMode() {
@@ -143,6 +189,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   void _toggleGridOverview() {
     setState(() {
       _showGridOverview = !_showGridOverview;
+      if (_showGridOverview) {
+        _showControls = true;
+        _autoHideTimer?.cancel();
+      } else {
+        _scheduleAutoHideControls();
+      }
     });
   }
 
@@ -152,9 +204,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       backgroundColor: _nightMode ? const Color(0xFF0D0D1A) : const Color(0xFF1E1E1E),
       body: Stack(
         children: [
-          // Main PDF View Area
-          GestureDetector(
-            onTap: _toggleControls,
+          // Main PDF View Area with Tap Listener
+          Listener(
+            onPointerDown: _handlePointerDown,
+            onPointerUp: _handlePointerUp,
+            behavior: HitTestBehavior.translucent,
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: PDFView(
@@ -193,11 +247,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             ),
           ),
 
-          // Top Navigation & Tab Bar Area
+          // Top Navigation & Tab Bar Area (Animates smoothly in/out)
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            top: _showControls ? 0 : -160,
+            curve: Curves.easeInOutCubic,
+            top: _showControls ? 0 : -180,
             left: 0,
             right: 0,
             child: Container(
@@ -207,7 +261,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   end: Alignment.bottomCenter,
                   colors: [
                     const Color(0xFF0D0D1A),
-                    const Color(0xFF0D0D1A).withOpacity(0.9),
+                    const Color(0xFF0D0D1A).withOpacity(0.92),
                     Colors.transparent,
                   ],
                 ),
@@ -311,7 +365,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                         itemCount: _openedTabs.length + 1,
                         itemBuilder: (context, index) {
                           if (index == _openedTabs.length) {
-                            // Add New Tab Button
                             return Padding(
                               padding: const EdgeInsets.only(left: 4),
                               child: ActionChip(
@@ -399,12 +452,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             ),
           ),
 
-          // Bottom Page Control Indicator
+          // Bottom Page Control Indicator (Animates smoothly in/out)
           if (_isReady && !_showGridOverview)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              bottom: _showControls ? 24 : -60,
+              curve: Curves.easeInOutCubic,
+              bottom: _showControls ? 24 : -80,
               left: 0,
               right: 0,
               child: Center(
@@ -464,7 +517,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               ),
             ),
 
-          // Multi-Task Grid Overview Screen Overlay (Visual Task Switcher like Android Recents)
+          // Multi-Task Grid Overview Overlay
           if (_showGridOverview)
             Positioned.fill(
               child: Container(
@@ -507,7 +560,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                           itemCount: _openedTabs.length + 1,
                           itemBuilder: (context, index) {
                             if (index == _openedTabs.length) {
-                              // Add New PDF Card
                               return InkWell(
                                 onTap: () {
                                   _toggleGridOverview();
