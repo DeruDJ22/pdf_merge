@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/pdf_file_model.dart';
@@ -218,50 +221,74 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             behavior: HitTestBehavior.translucent,
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: PDFView(
-                key: ValueKey('pdf_view_${_currentFile.id}_${_activeTabIndex}_$_nightMode'),
-                filePath: _currentFile.path,
-                defaultPage: _currentFile.lastReadPage,
-                enableSwipe: true,
-                swipeHorizontal: false,
-                autoSpacing: false,
-                pageFling: false,
-                pageSnap: false,
-                fitPolicy: FitPolicy.WIDTH,
-                nightMode: _nightMode,
-                onRender: (pages) {
-                  setState(() {
-                    _totalPages = pages!;
-                    _isReady = true;
-                  });
-                  _currentFile.totalPages = pages!;
-                  HistoryService.updateProgress(_currentFile.path, _currentPage, pages);
-                },
-                onViewCreated: (controller) {
-                  _pdfController = controller;
-                  if (_currentFile.lastReadPage > 0) {
-                    _pdfController?.setPage(_currentFile.lastReadPage);
-                  }
-                },
-                onPageChanged: (page, total) {
-                  if (page != null) {
-                    setState(() {
-                      _currentPage = page;
-                    });
-                    _currentFile.lastReadPage = page;
-                    if (total != null) _currentFile.totalPages = total;
-                    HistoryService.updateProgress(_currentFile.path, page, total ?? _totalPages);
-                  }
-                },
-                onError: (error) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: $error'),
-                      backgroundColor: Colors.red.shade700,
+              child: (kIsWeb || (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)))
+                  ? PdfViewer.file(
+                      _currentFile.path,
+                      key: ValueKey('pdfrx_view_${_currentFile.id}_${_activeTabIndex}_$_nightMode'),
+                      params: PdfViewerParams(
+                        onPageChanged: (pageNumber) {
+                          if (pageNumber != null) {
+                            setState(() {
+                              _currentPage = pageNumber - 1;
+                            });
+                            _currentFile.lastReadPage = pageNumber - 1;
+                            HistoryService.updateProgress(_currentFile.path, pageNumber - 1, _totalPages);
+                          }
+                        },
+                        onViewerReady: (document, controller) {
+                          setState(() {
+                            _totalPages = document.pages.length;
+                            _isReady = true;
+                          });
+                          _currentFile.totalPages = document.pages.length;
+                          HistoryService.updateProgress(_currentFile.path, _currentPage, document.pages.length);
+                        },
+                      ),
+                    )
+                  : PDFView(
+                      key: ValueKey('pdf_view_${_currentFile.id}_${_activeTabIndex}_$_nightMode'),
+                      filePath: _currentFile.path,
+                      defaultPage: _currentFile.lastReadPage,
+                      enableSwipe: true,
+                      swipeHorizontal: false,
+                      autoSpacing: false,
+                      pageFling: false,
+                      pageSnap: false,
+                      fitPolicy: FitPolicy.WIDTH,
+                      nightMode: _nightMode,
+                      onRender: (pages) {
+                        setState(() {
+                          _totalPages = pages!;
+                          _isReady = true;
+                        });
+                        _currentFile.totalPages = pages!;
+                        HistoryService.updateProgress(_currentFile.path, _currentPage, pages);
+                      },
+                      onViewCreated: (controller) {
+                        _pdfController = controller;
+                        if (_currentFile.lastReadPage > 0) {
+                          _pdfController?.setPage(_currentFile.lastReadPage);
+                        }
+                      },
+                      onPageChanged: (page, total) {
+                        if (page != null) {
+                          setState(() {
+                            _currentPage = page;
+                          });
+                          _currentFile.lastReadPage = page;
+                          if (total != null) _currentFile.totalPages = total;
+                          HistoryService.updateProgress(_currentFile.path, page, total ?? _totalPages);
+                        }
+                      },
+                      onError: (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $error'),
+                            backgroundColor: Colors.red.shade700,
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ),
 

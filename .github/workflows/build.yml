@@ -1,4 +1,4 @@
-name: Build & Release APK
+name: Build & Release (Android & Windows)
 
 on:
   push:
@@ -9,11 +9,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Flutter APK
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Repository
@@ -37,24 +35,80 @@ jobs:
       - name: Build APK (Release)
         run: flutter build apk --release
 
-      - name: Ensure Custom APK Name
+      - name: Prepare APK Asset
         run: |
-          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-            mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/PDF-Merge.apk
-          fi
+          mkdir -p release_assets
+          cp build/app/outputs/flutter-apk/app-release.apk release_assets/PDF-Merge-Android.apk
 
-      - name: Upload APK Artifact
+      - name: Upload Android Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-Merge-v1.0.1-APK
-          path: build/app/outputs/flutter-apk/PDF-Merge.apk
+          name: PDF-Merge-Android
+          path: release_assets/PDF-Merge-Android.apk
+
+  build-windows:
+    name: Build Windows App
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Enable Windows Desktop Support
+        run: flutter config --enable-windows-desktop
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Executable
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path release_assets
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath release_assets\PDF-Merge-Windows.zip
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Merge-Windows
+          path: release_assets/PDF-Merge-Windows.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PDF-Merge-Android
+          path: release_assets
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PDF-Merge-Windows
+          path: release_assets
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.1-build.{0}', github.run_number) }}
-          files: build/app/outputs/flutter-apk/PDF-Merge.apk
-          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('PDF Merge v1.0.1 Build {0}', github.run_number) }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.3-build.{0}', github.run_number) }}
+          files: |
+            release_assets/PDF-Merge-Android.apk
+            release_assets/PDF-Merge-Windows.zip
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('PDF Merge v1.0.3 Build {0}', github.run_number) }}
           draft: false
           prerelease: false
         env:
