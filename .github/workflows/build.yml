@@ -107,11 +107,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.3-build.{0}', github.run_number) }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v1.0.4-build.{0}', github.run_number) }}
           files: |
             release_assets/PDF-Merge-Android.apk
             release_assets/PDF-Merge-Windows.zip
-          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('PDF Merge v1.0.3 Build {0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('PDF Merge v1.0.4 Build {0}', github.run_number) }}
           draft: false
           prerelease: false
         env:

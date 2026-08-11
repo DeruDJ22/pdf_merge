@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/pdf_file_model.dart';
 import '../services/history_service.dart';
+import '../services/pdf_trim_service.dart';
 
 class TrimPdfDialog extends StatefulWidget {
   final PdfFileModel pdfFile;
@@ -49,18 +52,20 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
   }
 
   void _setupProgressListener() {
-    _platform.setMethodCallHandler((call) async {
-      if (call.method == 'onProgress') {
-        final Map<dynamic, dynamic> args = call.arguments;
-        if (mounted) {
-          setState(() {
-            _processedPages = args['processed'] ?? 0;
-            _totalExtractPages = args['total'] ?? 0;
-            _currentProgress = args['percent'] ?? 0;
-          });
+    if (!kIsWeb && Platform.isAndroid) {
+      _platform.setMethodCallHandler((call) async {
+        if (call.method == 'onProgress') {
+          final Map<dynamic, dynamic> args = call.arguments;
+          if (mounted) {
+            setState(() {
+              _processedPages = args['processed'] ?? 0;
+              _totalExtractPages = args['total'] ?? 0;
+              _currentProgress = args['percent'] ?? 0;
+            });
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   int get _startPage => int.tryParse(_startPageController.text.trim()) ?? 1;
@@ -70,6 +75,18 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
     final e = _endPage;
     if (s > e || s < 1) return 0;
     return (e - s) + 1;
+  }
+
+  Future<String> _getOutputDirPath() async {
+    if (!kIsWeb && Platform.isWindows) {
+      final docs = await getApplicationDocumentsDirectory();
+      final dir = Directory('${docs.path}\\PDF_Merge');
+      if (!await dir.exists()) await dir.create(recursive: true);
+      return dir.path;
+    }
+    final dir = Directory('/storage/emulated/0/Download/PDF_Merge');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir.path;
   }
 
   Future<void> _startTrimming() async {
@@ -95,12 +112,8 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
       outputName += '.pdf';
     }
 
-    final outputDir = Directory('/storage/emulated/0/Download/PDF_Merge');
-    if (!await outputDir.exists()) {
-      await outputDir.create(recursive: true);
-    }
-
-    final outputPath = '${outputDir.path}/$outputName';
+    final outputDirPath = await _getOutputDirPath();
+    final outputPath = '$outputDirPath/$outputName';
 
     setState(() {
       _isProcessing = true;
@@ -108,19 +121,28 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
     });
 
     try {
-      final success = await _platform.invokeMethod<bool>('trimPdf', {
-        'path': widget.pdfFile.path,
-        'startPage': start,
-        'endPage': end,
-        'output': outputPath,
-      });
+      final success = await PdfTrimService.trimPdf(
+        inputPath: widget.pdfFile.path,
+        startPage: start,
+        endPage: end,
+        outputPath: outputPath,
+        onProgress: (processed, total, percent) {
+          if (mounted) {
+            setState(() {
+              _processedPages = processed;
+              _totalExtractPages = total;
+              _currentProgress = percent;
+            });
+          }
+        },
+      );
 
       if (mounted) {
         setState(() {
           _isProcessing = false;
         });
 
-        if (success == true) {
+        if (success) {
           Navigator.pop(context); // Close dialog
 
           final trimmedModel = await PdfFileModel.fromPath(outputPath);
@@ -193,11 +215,11 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Tersimpan di Download/PDF_Merge/\n${fileModel.name}',
+                'Tersimpan di:\n${fileModel.path}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white60,
-                  fontSize: 13,
+                  fontSize: 12,
                 ),
               ),
               const SizedBox(height: 24),
@@ -229,7 +251,7 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      icon: const Icon(Icons.menu_book_rounded, color: Colors.white),
+                      icon: const Icon(Icons.check_rounded, color: Colors.white),
                       label: const Text('Selesai', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),

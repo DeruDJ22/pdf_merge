@@ -10,6 +10,7 @@ class PdfCard extends StatefulWidget {
   final int? mergeOrder;
   final VoidCallback onTap;
   final VoidCallback onDismissed;
+  final VoidCallback? onTrimTap;
 
   const PdfCard({
     super.key,
@@ -19,6 +20,7 @@ class PdfCard extends StatefulWidget {
     this.mergeOrder,
     required this.onTap,
     required this.onDismissed,
+    this.onTrimTap,
   });
 
   @override
@@ -307,10 +309,28 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                         : null,
                   )
                 else
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.white.withOpacity(0.3),
-                    size: 24,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.onTrimTap != null)
+                        IconButton(
+                          onPressed: widget.onTrimTap,
+                          icon: const Icon(Icons.content_cut_rounded, size: 18),
+                          color: const Color(0xFF9C8FFF),
+                          tooltip: 'Potong / Ekstrak Halaman',
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFF6C63FF).withOpacity(0.12),
+                            padding: const EdgeInsets.all(6),
+                            minimumSize: const Size(32, 32),
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white.withOpacity(0.3),
+                        size: 22,
+                      ),
+                    ],
                   ),
               ],
             ),

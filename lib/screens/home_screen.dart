@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return list;
   }
 
-  /// Show modal sheet with choice: "Baca PDF" or "Gabungkan (Merge) PDF"
+  /// Show modal sheet with choices for a file
   void _showOptionModal(PdfFileModel file) {
     showModalBottomSheet(
       context: context,
@@ -197,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 24),
 
+              // Option 1: Baca PDF
               InkWell(
                 onTap: () {
                   Navigator.pop(context);
@@ -246,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Buka langsung dengan scroll terus-menerus tanpa pembatas',
+                              'Buka langsung dengan viewer warna asli & night mode',
                               style: TextStyle(
                                 color: Colors.white54,
                                 fontSize: 12,
@@ -357,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6C63FF).withOpacity(0.2),
+                          color: const Color(0xFF9C8FFF).withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -381,7 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Ambil rentang halaman tertentu (misal Hal 100 - 200)',
+                              'Ambil rentang halaman tertentu (misal Hal 100-200)',
                               style: TextStyle(
                                 color: Colors.white54,
                                 fontSize: 12,
@@ -395,8 +396,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-
-              const SizedBox(height: 16),
             ],
           ),
         );
@@ -518,40 +517,135 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _pickPdfFiles() async {
+  Future<void> _pickAndTrimPdf() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
-        allowMultiple: true,
+        allowMultiple: false,
       );
 
-      if (result != null && result.files.isNotEmpty) {
-        final addedList = <PdfFileModel>[];
-        for (final file in result.files) {
-          if (file.path != null) {
-            final model = await PdfFileModel.fromPath(file.path!);
-            await HistoryService.addOrUpdateFile(model);
-            addedList.add(model);
-          }
-        }
+      if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+        final path = result.files.first.path!;
+        final model = await PdfFileModel.fromPath(path);
+        await HistoryService.addOrUpdateFile(model);
 
-        await _loadSavedHistory();
-
-        if (addedList.length == 1 && mounted) {
-          _showOptionModal(addedList.first);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => TrimPdfDialog(
+              pdfFile: model,
+              onTrimComplete: (trimmedPath) => _loadSavedHistory(),
+            ),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membuka file: $e'),
+            content: Text('Gagal memilih file: $e'),
             backgroundColor: Colors.red.shade700,
           ),
         );
       }
     }
+  }
+
+  void _showFabActionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Pilih Aksi Dokumen',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C63FF).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.menu_book_rounded, color: Color(0xFF6C63FF)),
+                ),
+                title: const Text('📖 Buka & Baca PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Buka file PDF untuk dibaca', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndReadPdf();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.merge_type_rounded, color: Colors.greenAccent),
+                ),
+                title: const Text('🔗 Gabungkan PDF (Merge)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Pilih beberapa file untuk digabung', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndMergePdfs();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF9C8FFF).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.content_cut_rounded, color: Color(0xFF9C8FFF)),
+                ),
+                title: const Text('✂️ Potong / Ekstrak Halaman PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Ambil rentang halaman spesifik', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndTrimPdf();
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _toggleMergeMode() {
@@ -648,56 +742,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openMergeScreen() {
-    if (_mergeQueue.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Pilih minimal 2 file PDF untuk digabungkan'),
-          backgroundColor: Colors.orange.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
-
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => MergeScreen(
-          filesToMerge: List.from(_mergeQueue),
-          onMergeComplete: (mergedPath, sourceFiles) async {
-            final model = await PdfFileModel.fromPath(mergedPath);
-            await HistoryService.addOrUpdateFile(model);
-
-            for (final src in sourceFiles) {
-              await HistoryService.removeFile(src.path);
-            }
-
-            final history = await HistoryService.loadHistory();
-
-            if (mounted) {
-              setState(() {
-                _openedFiles = history;
-                _isMergeMode = false;
-                _mergeQueue.clear();
-              });
-              _openViewer(model);
-            }
+      MaterialPageRoute(
+        builder: (context) => MergeScreen(
+          filesToMerge: _mergeQueue,
+          onMergeComplete: (mergedPath, sourceFiles) {
+            setState(() {
+              _isMergeMode = false;
+              _mergeQueue.clear();
+            });
+            _loadSavedHistory();
           },
         ),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 350),
       ),
     );
   }
@@ -711,32 +768,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return GradientBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: _buildAppBar(),
-        body: _openedFiles.isEmpty
-            ? EmptyState(
-                onReadPdfPressed: _pickAndReadPdf,
-                onMergePdfPressed: _pickAndMergePdfs,
-              )
-            : _buildBodyContent(),
-        floatingActionButton: _openedFiles.isNotEmpty ? _buildFab() : null,
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F1A),
+      appBar: _buildAppBar(),
+      body: GradientBackground(
+        child: _buildBodyContent(),
       ),
+      floatingActionButton: _buildFab(),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF0F0F1A),
+      elevation: 0,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _isMergeMode ? 'Pilih File untuk Merge' : 'PDF Merge & Reader',
-            style: const TextStyle(
+          const Text(
+            'PDF Merge & Reader',
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
+              color: Colors.white,
               letterSpacing: -0.5,
             ),
           ),
@@ -774,23 +828,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             color: Colors.red.shade400,
             onTap: _toggleMergeMode,
           ),
-        ] else if (_openedFiles.isNotEmpty) ...[
+        ] else ...[
+          _buildActionButton(
+            icon: Icons.content_cut_rounded,
+            label: 'Potong PDF',
+            color: const Color(0xFF9C8FFF),
+            onTap: _pickAndTrimPdf,
+          ),
+          const SizedBox(width: 6),
+          _buildActionButton(
+            icon: Icons.merge_type_rounded,
+            label: 'Merge',
+            color: const Color(0xFF6C63FF),
+            onTap: _toggleMergeMode,
+          ),
+          const SizedBox(width: 4),
           IconButton(
             onPressed: _clearAppCache,
-            icon: const Icon(Icons.cleaning_services_rounded, color: Colors.white70),
+            icon: const Icon(Icons.cleaning_services_rounded, color: Colors.white70, size: 20),
             tooltip: 'Bersihkan Cache Aplikasi',
           ),
           IconButton(
             onPressed: _clearAllHistory,
-            icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white70),
+            icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white70, size: 20),
             tooltip: 'Hapus Semua Riwayat',
-          ),
-          const SizedBox(width: 4),
-          _buildActionButton(
-            icon: Icons.merge_type_rounded,
-            label: 'Mode Merge',
-            color: const Color(0xFF6C63FF),
-            onTap: _toggleMergeMode,
           ),
         ],
         const SizedBox(width: 12),
@@ -811,7 +872,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -886,7 +947,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           style: TextStyle(
             color: Colors.white.withOpacity(0.9),
             fontSize: 12,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -895,6 +956,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildBodyContent() {
     final sortedList = _sortedAndFilteredFiles;
+
+    if (_openedFiles.isEmpty) {
+      return EmptyState(
+        onReadPdfPressed: _pickAndReadPdf,
+        onMergePdfPressed: _pickAndMergePdfs,
+      );
+    }
 
     return Column(
       children: [
@@ -1056,6 +1124,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             _showOptionModal(pdfFile);
                           }
                         },
+                        onTrimTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => TrimPdfDialog(
+                              pdfFile: pdfFile,
+                              onTrimComplete: (trimmedPath) => _loadSavedHistory(),
+                            ),
+                          );
+                        },
                         onDismissed: () => _removeFile(pdfFile),
                       );
                     },
@@ -1081,7 +1158,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
         child: FloatingActionButton.extended(
-          onPressed: _pickPdfFiles,
+          onPressed: _showFabActionSheet,
           backgroundColor: const Color(0xFF6C63FF),
           foregroundColor: Colors.white,
           elevation: 0,
