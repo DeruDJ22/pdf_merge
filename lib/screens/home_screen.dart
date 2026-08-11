@@ -8,6 +8,7 @@ import '../widgets/gradient_background.dart';
 import '../widgets/empty_state.dart';
 import 'pdf_viewer_screen.dart';
 import 'merge_screen.dart';
+import '../widgets/trim_pdf_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -262,6 +263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               const SizedBox(height: 12),
 
+              // Option 2: Gabungkan (Merge) PDF
               InkWell(
                 onTap: () {
                   Navigator.pop(context);
@@ -312,6 +314,74 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             SizedBox(height: 2),
                             Text(
                               'Pilih file lain dan gabungkan menjadi 1 file PDF',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 3: Potong / Ekstrak Halaman
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    builder: (context) => TrimPdfDialog(
+                      pdfFile: file,
+                      onTrimComplete: (trimmedPath) => _loadSavedHistory(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6C63FF).withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.content_cut_rounded,
+                          color: Color(0xFF9C8FFF),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '✂️ Potong / Ekstrak Halaman',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Ambil rentang halaman tertentu (misal Hal 100 - 200)',
                               style: TextStyle(
                                 color: Colors.white54,
                                 fontSize: 12,

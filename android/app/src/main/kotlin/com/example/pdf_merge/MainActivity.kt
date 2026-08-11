@@ -42,7 +42,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // Merge & Thumbnail & Cache channel
+        // Merge & Thumbnail & Trim & Cache channel
         mergeChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MERGE_CHANNEL)
         mergeChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -64,6 +64,28 @@ class MainActivity : FlutterActivity() {
                         }
                     } else {
                         result.error("INVALID_ARGS", "Missing paths or output", null)
+                    }
+                }
+                "trimPdf" -> {
+                    val path = call.argument<String>("path")
+                    val startPage = call.argument<Int>("startPage") ?: 1
+                    val endPage = call.argument<Int>("endPage") ?: 1
+                    val output = call.argument<String>("output")
+                    if (path != null && output != null) {
+                        executor.execute {
+                            try {
+                                val success = trimPdfFileBackground(path, startPage, endPage, output)
+                                mainHandler.post {
+                                    result.success(success)
+                                }
+                            } catch (e: Exception) {
+                                mainHandler.post {
+                                    result.error("TRIM_ERROR", e.message, null)
+                                }
+                            }
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Missing path or output", null)
                     }
                 }
                 "renderThumbnail" -> {
@@ -133,15 +155,12 @@ class MainActivity : FlutterActivity() {
         return files
     }
 
-    /// Try resolving actual file path directly WITHOUT duplicating/copying file
     private fun resolveOrCopyUri(uri: Uri): String? {
-        // 1. Direct file URI
         if (uri.scheme == "file") {
             val path = uri.path
             if (path != null && File(path).exists()) return path
         }
 
-        // 2. Content URI direct path resolution (Zero memory overhead)
         if (uri.scheme == "content") {
             try {
                 val proj = arrayOf(android.provider.MediaStore.MediaColumns.DATA)
@@ -160,7 +179,6 @@ class MainActivity : FlutterActivity() {
             } catch (_: Exception) {}
         }
 
-        // 3. Fallback: Copy stream to cache ONLY if direct path is impossible
         return copyUriToLocal(uri)
     }
 
@@ -184,7 +202,6 @@ class MainActivity : FlutterActivity() {
 
             val outputFile = File(outputDir, fileName)
 
-            // Avoid re-copying if file already exists with same size
             if (outputFile.exists() && outputFile.length() > 0) {
                 return outputFile.absolutePath
             }
@@ -202,7 +219,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    /// Generate ultra-compressed 120px JPEG thumbnail (5-15 KB per file max)
     private fun generateThumbnail(pdfPath: String): String? {
         try {
             val file = File(pdfPath)
@@ -248,14 +264,12 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    /// Clean temporary cache files automatically
     private fun cleanStaleCache() {
         try {
             val importedDir = File(cacheDir, "imported_pdfs")
             if (importedDir.exists()) {
                 val now = System.currentTimeMillis()
                 importedDir.listFiles()?.forEach { f ->
-                    // Delete imported temp PDFs older than 12 hours
                     if (now - f.lastModified() > 12 * 60 * 60 * 1000) {
                         f.delete()
                     }
@@ -283,6 +297,83 @@ class MainActivity : FlutterActivity() {
             }
         } catch (_: Exception) {}
         return totalFreed
+    }
+
+    private fun trimPdfFileBackground(inputPath: String, startPage: Int, endPage: Int, outputPath: String): Boolean {
+        try {
+            val file = File(inputPath)
+            if (!file.exists()) return false
+
+            val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val renderer = PdfRenderer(fileDescriptor)
+            val totalPages = renderer.pageCount
+
+            if (totalPages == 0) {
+                renderer.close()
+                fileDescriptor.close()
+                return false
+            }
+
+            val startIdx = (startPage - 1).coerceIn(0, totalPages - 1)
+            val endIdx = (endPage - 1).coerceIn(startIdx, totalPages - 1)
+            val pagesToExtract = (endIdx - startIdx) + 1
+
+            val document = PdfDocument()
+            var processed = 0
+
+            sendProgress(0, pagesToExtract, 0)
+
+            for (i in startIdx..endIdx) {
+                val sourcePage = renderer.openPage(i)
+
+                val pageInfo = PdfDocument.PageInfo.Builder(
+                    sourcePage.width,
+                    sourcePage.height,
+                    processed + 1
+                ).create()
+
+                val destPage = document.startPage(pageInfo)
+
+                val bitmap = Bitmap.createBitmap(
+                    sourcePage.width,
+                    sourcePage.height,
+                    Bitmap.Config.ARGB_8888
+                )
+
+                sourcePage.render(
+                    bitmap,
+                    null,
+                    null,
+                    PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                )
+
+                destPage.canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+                document.finishPage(destPage)
+                bitmap.recycle()
+                sourcePage.close()
+
+                processed++
+                val percent = ((processed.toDouble() / pagesToExtract) * 100).toInt()
+                sendProgress(processed, pagesToExtract, percent)
+            }
+
+            renderer.close()
+            fileDescriptor.close()
+
+            val outputFile = File(outputPath)
+            outputFile.parentFile?.mkdirs()
+            FileOutputStream(outputFile).use { output ->
+                document.writeTo(output)
+            }
+            document.close()
+
+            sendProgress(pagesToExtract, pagesToExtract, 100)
+            return true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
     }
 
     private fun mergePdfFilesBackground(inputPaths: List<String>, outputPath: String): Boolean {

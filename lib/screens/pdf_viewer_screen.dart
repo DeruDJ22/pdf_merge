@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/pdf_file_model.dart';
 import '../services/history_service.dart';
+import '../widgets/trim_pdf_dialog.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final PdfFileModel pdfFile;
@@ -352,6 +353,26 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                               backgroundColor: Colors.white.withOpacity(0.12),
                             ),
                             tooltip: _nightMode ? 'Mode Terang' : 'Mode Gelap',
+                          ),
+                          const SizedBox(width: 4),
+                          // Trim button
+                          IconButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => TrimPdfDialog(
+                                  pdfFile: _currentFile,
+                                  initialStartPage: _currentPage + 1,
+                                  initialEndPage: (_currentPage + 50).clamp(1, _totalPages > 0 ? _totalPages : 1),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.content_cut_rounded),
+                            color: Colors.white,
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.12),
+                            ),
+                            tooltip: 'Potong / Ekstrak Halaman',
                           ),
                           const SizedBox(width: 4),
                           // Share button
