@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pdfrx/pdfrx.dart';
 import '../models/pdf_file_model.dart';
 import '../services/history_service.dart';
 import '../services/pdf_trim_service.dart';
@@ -30,6 +31,9 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
   late TextEditingController _startPageController;
   late TextEditingController _endPageController;
   late TextEditingController _nameController;
+  final PdfViewerController _previewController = PdfViewerController();
+  int _previewPage = 1;
+  int _pdfTotalPages = 0;
 
   bool _isProcessing = false;
   int _currentProgress = 0;
@@ -335,7 +339,107 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+
+            // Live PDF Page Preview Area
+            Container(
+              height: 210,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: const Color(0xFF161626),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+              ),
+              child: Stack(
+                children: [
+                  PdfViewer.file(
+                    widget.pdfFile.path,
+                    controller: _previewController,
+                    params: PdfViewerParams(
+                      onPageChanged: (pageNumber) {
+                        if (pageNumber != null && mounted) {
+                          setState(() {
+                            _previewPage = pageNumber;
+                          });
+                        }
+                      },
+                      onViewerReady: (document, controller) {
+                        if (mounted) {
+                          setState(() {
+                            _pdfTotalPages = document.pages.length;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  // Page number indicator badge & quick set action overlay
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    right: 8,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.75),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Text(
+                            'Preview Hal: $_previewPage / ${maxPages > 0 ? maxPages : _pdfTotalPages}',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                _startPageController.text = '$_previewPage';
+                                setState(() {});
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6C63FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Set Mulai',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            InkWell(
+                              onTap: () {
+                                _endPageController.text = '$_previewPage';
+                                setState(() {});
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF9C8FFF),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Set Akhir',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
 
             // Page range inputs
             const Text(

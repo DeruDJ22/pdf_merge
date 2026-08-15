@@ -399,6 +399,7 @@ class _MergeScreenState extends State<MergeScreen>
                       return Container(
                         key: ValueKey(file.id),
                         margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1A2E),
                           borderRadius: BorderRadius.circular(14),
@@ -406,66 +407,75 @@ class _MergeScreenState extends State<MergeScreen>
                             color: Colors.white.withOpacity(0.08),
                           ),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.fromLTRB(4, 2, 8, 2),
-                          leading: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ReorderableDragStartListener(
-                                index: index,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.drag_handle_rounded,
-                                    color: Colors.white.withOpacity(0.4),
+                        child: Row(
+                          children: [
+                            // Drag handle
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.drag_handle_rounded,
+                                  color: Colors.white.withOpacity(0.4),
+                                ),
+                              ),
+                            ),
+                            // Order badge
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6C63FF).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6C63FF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
                                   ),
                                 ),
                               ),
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${index + 1}',
+                            ),
+                            const SizedBox(width: 12),
+                            // File info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    file.name,
                                     style: const TextStyle(
-                                      color: Color(0xFF6C63FF),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${file.sizeFormatted} • ${file.totalPages > 0 ? "${file.totalPages} Halaman" : "PDF"}',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 12,
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                          title: Text(
-                            file.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            file.sizeFormatted,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 12,
+                            // Remove button
+                            IconButton(
+                              onPressed: () => _removeFile(index),
+                              icon: Icon(
+                                Icons.remove_circle_outline_rounded,
+                                color: Colors.red.shade400,
+                                size: 22,
+                              ),
                             ),
-                          ),
-                          trailing: IconButton(
-                            onPressed: () => _removeFile(index),
-                            icon: Icon(
-                              Icons.remove_circle_outline_rounded,
-                              color: Colors.red.shade400,
-                              size: 22,
-                            ),
-                          ),
+                          ],
                         ),
                       );
                     },

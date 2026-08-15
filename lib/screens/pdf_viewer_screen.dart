@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'dart:io';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
@@ -39,7 +39,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   PDFViewController? _pdfController;
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
-  Timer? _autoHideTimer;
+
 
   // Pointer tracking for tap detection on native PDF View
   DateTime? _tapDownTime;
@@ -70,23 +70,22 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     );
     _animController.forward();
 
-    _scheduleAutoHideControls();
   }
 
-  void _scheduleAutoHideControls() {
-    _autoHideTimer?.cancel();
-    _autoHideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && _showControls && !_showGridOverview) {
-        setState(() {
-          _showControls = false;
-        });
+  void _handleScrollNotification(ScrollNotification notification) {
+    if (notification is UserScrollNotification && !_showGridOverview) {
+      if (notification.direction == ScrollDirection.forward) {
+        // Scroll up -> show controls
+        if (!_showControls && mounted) setState(() => _showControls = true);
+      } else if (notification.direction == ScrollDirection.reverse) {
+        // Scroll down -> hide controls
+        if (_showControls && mounted) setState(() => _showControls = false);
       }
-    });
+    }
   }
 
   @override
   void dispose() {
-    _autoHideTimer?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -102,7 +101,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         _showControls = true;
         _currentPage = _currentFile.lastReadPage;
       });
-      _scheduleAutoHideControls();
+
     }
   }
 
@@ -142,7 +141,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 _showControls = true;
                 _currentPage = 0;
               });
-              _scheduleAutoHideControls();
+
             } else {
               final existingIndex = _openedTabs.indexWhere((f) => f.path == model.path);
               _switchTab(existingIndex);
@@ -166,11 +165,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     setState(() {
       _showControls = !_showControls;
     });
-    if (_showControls) {
-      _scheduleAutoHideControls();
-    } else {
-      _autoHideTimer?.cancel();
-    }
   }
 
   void _handlePointerDown(PointerDownEvent event) {
@@ -201,9 +195,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       _showGridOverview = !_showGridOverview;
       if (_showGridOverview) {
         _showControls = true;
-        _autoHideTimer?.cancel();
-      } else {
-        _scheduleAutoHideControls();
       }
     });
   }
@@ -214,11 +205,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       backgroundColor: _nightMode ? const Color(0xFF0D0D1A) : const Color(0xFF1E1E1E),
       body: Stack(
         children: [
-          // Main PDF View Area with Tap Listener
-          Listener(
-            onPointerDown: _handlePointerDown,
-            onPointerUp: _handlePointerUp,
-            behavior: HitTestBehavior.translucent,
+          // Main PDF View Area with Tap + Scroll Listener
+          NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              _handleScrollNotification(notification);
+              return false;
+            },
+            child: Listener(
+              onPointerDown: _handlePointerDown,
+              onPointerUp: _handlePointerUp,
+              behavior: HitTestBehavior.translucent,
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: (kIsWeb || (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)))
@@ -290,7 +286,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                       },
                     ),
             ),
-          ),
+          ),),
 
           // Top Navigation & Tab Bar Area (Animates smoothly in/out)
           AnimatedPositioned(
@@ -598,7 +594,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             max: (_totalPages - 1).toDouble(),
                             divisions: _totalPages > 1 ? _totalPages - 1 : 1,
                             onChanged: (value) {
-                              _scheduleAutoHideControls();
+
                               final pageNum = value.round();
                               _pdfController?.setPage(pageNum);
                             },
