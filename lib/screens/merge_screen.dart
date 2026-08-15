@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import '../models/pdf_file_model.dart';
+import '../services/pdf_merge_service.dart';
 import '../widgets/gradient_background.dart';
 import 'package:flutter/services.dart';
 
@@ -175,31 +176,41 @@ class _MergeScreenState extends State<MergeScreen>
 
       final outputPath = await _getPublicOutputPath(outputName);
 
-      // Try native Android background merge with real-time page-by-page progress
-      try {
-        final result = await platform.invokeMethod('mergePdfs', {
-          'paths': paths,
-          'output': outputPath,
-        });
-
-        if (result == true) {
+      final success = await PdfMergeService.mergePdfs(
+        inputPaths: paths,
+        outputPath: outputPath,
+        onProgress: (processed, total, percent) {
           if (mounted) {
             setState(() {
-              _mergedFilePath = outputPath;
-              _progress = 1.0;
-              _isMerging = false;
+              _progress = (percent / 100.0).clamp(0.0, 1.0);
+              _statusText = 'Menggabungkan halaman $processed dari $total ($percent%)...';
             });
           }
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _isMerging = false;
+        });
+
+        if (success) {
+          setState(() {
+            _mergedFilePath = outputPath;
+            _progress = 1.0;
+          });
 
           widget.onMergeComplete(outputPath, List.from(_files));
-          return;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Gagal menggabungkan PDF. Pastikan file tidak rusak.'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
-      } catch (e) {
-        // Fallback to Dart copy merge
       }
-
-      await _dartFallbackMerge(paths, outputPath);
-
     } catch (e) {
       if (mounted) {
         setState(() => _isMerging = false);
@@ -212,31 +223,6 @@ class _MergeScreenState extends State<MergeScreen>
         );
       }
     }
-  }
-
-  Future<void> _dartFallbackMerge(List<String> paths, String outputPath) async {
-    final firstFile = File(paths.first);
-
-    for (int i = 0; i < 10; i++) {
-      await Future.delayed(const Duration(milliseconds: 100));
-      if (mounted) {
-        setState(() {
-          _progress = (i + 1) / 10;
-          _statusText = 'Menggabungkan (${((i + 1) * 10)}%)...';
-        });
-      }
-    }
-
-    await firstFile.copy(outputPath);
-
-    if (mounted) {
-      setState(() {
-        _mergedFilePath = outputPath;
-        _isMerging = false;
-      });
-    }
-
-    widget.onMergeComplete(outputPath, List.from(_files));
   }
 
   @override

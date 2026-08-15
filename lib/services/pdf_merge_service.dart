@@ -1,104 +1,101 @@
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdfrx/pdfrx.dart' as pdfrx;
 
-/// Service for merging multiple PDF files into one
 class PdfMergeService {
-  /// Merge multiple PDF files into a single PDF
-  /// Uses a simple concatenation approach that works for most basic PDFs
-  /// For production, consider using a native PDF library
-  static Future<String?> mergePdfs({
-    required List<String> filePaths,
-    required String outputName,
-  }) async {
-    if (filePaths.isEmpty) return null;
-    if (filePaths.length == 1) return filePaths.first;
+  static const _platform = MethodChannel('com.example.pdf_merge/merge');
 
+  /// Merge multiple PDF files cross-platform (Android Native or Dart pdfrx+pdf for Windows/Web)
+  static Future<bool> mergePdfs({
+    required List<String> inputPaths,
+    required String outputPath,
+    Function(int processed, int total, int percent)? onProgress,
+  }) async {
+    if (inputPaths.length < 2) return false;
+
+    // 1. On Android, try fast native MethodChannel first
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final success = await _platform.invokeMethod<bool>('mergePdfs', {
+          'paths': inputPaths,
+          'output': outputPath,
+        });
+        if (success == true) return true;
+      } catch (e) {
+        debugPrint('Native Android merge channel failed, falling back to Dart: $e');
+      }
+    }
+
+    // 2. Cross-platform Dart implementation (Windows, Web, Linux, macOS, Android fallback)
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final mergedDir = Directory(p.join(dir.path, 'merged'));
-      if (!await mergedDir.exists()) {
-        await mergedDir.create(recursive: true);
+      final docList = <pdfrx.PdfDocument>[];
+      int totalPages = 0;
+
+      for (final path in inputPaths) {
+        final doc = await pdfrx.PdfDocumentFactory.instance.openFile(path);
+        docList.add(doc);
+        totalPages += doc.pages.length;
       }
 
-      final sanitizedName = outputName.replaceAll(RegExp(r'[^\w\s\-.]'), '_');
-      final outputPath = p.join(mergedDir.path, '$sanitizedName.pdf');
+      if (totalPages == 0) return false;
 
-      // Read all PDF files
-      final pdfFiles = <File>[];
-      for (final path in filePaths) {
-        final file = File(path);
-        if (await file.exists()) {
-          pdfFiles.add(file);
+      final pdfDoc = pw.Document();
+      int processedPages = 0;
+
+      if (onProgress != null) onProgress(0, totalPages, 0);
+
+      for (final doc in docList) {
+        for (final page in doc.pages) {
+          final pageImage = await page.render(
+            fullWidth: page.width * 1.5,
+            fullHeight: page.height * 1.5,
+          );
+
+          if (pageImage != null) {
+            // PDFium outputs pixels in BGRA order. Using ChannelOrder.bgra fixes color inversion (red/blue swap).
+            final image = img.Image.fromBytes(
+              width: pageImage.width,
+              height: pageImage.height,
+              bytes: pageImage.pixels.buffer,
+              order: img.ChannelOrder.bgra,
+            );
+
+            final pngBytes = Uint8List.fromList(img.encodePng(image));
+            final memoryImage = pw.MemoryImage(pngBytes);
+
+            pdfDoc.addPage(
+              pw.Page(
+                pageFormat: PdfPageFormat(page.width, page.height),
+                margin: pw.EdgeInsets.zero,
+                build: (pw.Context context) {
+                  return pw.FullPage(
+                    ignoreMargins: true,
+                    child: pw.Image(memoryImage, fit: pw.BoxFit.fill),
+                  );
+                },
+              ),
+            );
+          }
+
+          processedPages++;
+          final percent = ((processedPages / totalPages) * 100).toInt();
+          if (onProgress != null) onProgress(processedPages, totalPages, percent);
         }
       }
 
-      if (pdfFiles.isEmpty) return null;
-
-      // Simple PDF merge: concatenate PDF content using cross-reference tables
-      final mergedBytes = await _mergePdfBytes(pdfFiles);
-      if (mergedBytes == null) return null;
-
+      final bytes = await pdfDoc.save();
       final outputFile = File(outputPath);
-      await outputFile.writeAsBytes(mergedBytes);
+      await outputFile.parent.create(recursive: true);
+      await outputFile.writeAsBytes(bytes);
 
-      return outputPath;
+      return true;
     } catch (e) {
-      return null;
+      debugPrint('Dart PDF merge error: $e');
+      return false;
     }
-  }
-
-  /// Simple PDF merge implementation
-  /// Reads PDF bytes and creates a combined document
-  static Future<List<int>?> _mergePdfBytes(List<File> files) async {
-    try {
-      // For a robust merge we use a basic approach:
-      // Copy the first PDF entirely, then append pages from subsequent PDFs
-      // This is a simplified merge - for complex PDFs, a native library would be better
-
-      // Read all file bytes
-      final allBytes = <List<int>>[];
-      for (final file in files) {
-        allBytes.add(await file.readAsBytes());
-      }
-
-      // If only one file, return its bytes
-      if (allBytes.length == 1) return allBytes.first;
-
-      // Use the platform channel to merge if available, otherwise return first file
-      // The actual merging is handled by the native Android code
-      return allBytes.first;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Get list of previously merged files
-  static Future<List<FileSystemEntity>> getMergedFiles() async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final mergedDir = Directory(p.join(dir.path, 'merged'));
-      if (!await mergedDir.exists()) return [];
-      return mergedDir
-          .listSync()
-          .where((f) => f.path.endsWith('.pdf'))
-          .toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  /// Delete a merged file
-  static Future<bool> deleteFile(String path) async {
-    try {
-      final file = File(path);
-      if (await file.exists()) {
-        await file.delete();
-        return true;
-      }
-    } catch (e) {
-      // Handle error
-    }
-    return false;
   }
 }

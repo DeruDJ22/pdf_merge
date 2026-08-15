@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:pdfrx/pdfrx.dart';
+import 'package:pdfrx/pdfrx.dart' as pdfrx;
 
 class PdfTrimService {
   static const _platform = MethodChannel('com.example.pdf_merge/merge');
@@ -34,7 +34,7 @@ class PdfTrimService {
 
     // 2. Cross-platform Dart implementation (Windows, Web, Linux, macOS, Android fallback)
     try {
-      final doc = await PdfDocumentFactory.instance.openFile(inputPath);
+      final doc = await pdfrx.PdfDocumentFactory.instance.openFile(inputPath);
       final totalPages = doc.pages.length;
       if (totalPages == 0) return false;
 
@@ -55,11 +55,12 @@ class PdfTrimService {
         );
 
         if (pageImage != null) {
+          // PDFium outputs pixels in BGRA order. Using ChannelOrder.bgra fixes color inversion (red/blue swap).
           final image = img.Image.fromBytes(
             width: pageImage.width,
             height: pageImage.height,
             bytes: pageImage.pixels.buffer,
-            order: img.ChannelOrder.rgba,
+            order: img.ChannelOrder.bgra,
           );
           final pngBytes = Uint8List.fromList(img.encodePng(image));
           final memoryImage = pw.MemoryImage(pngBytes);
