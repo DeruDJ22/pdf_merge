@@ -1094,6 +1094,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               : AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child: ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
                     key: ValueKey('$_isMergeMode$_sortOrder'),
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
                     itemCount: sortedList.length,

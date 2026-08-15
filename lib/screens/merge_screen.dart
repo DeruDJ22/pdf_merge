@@ -383,6 +383,7 @@ class _MergeScreenState extends State<MergeScreen>
                 // Reorderable file list
                 Expanded(
                   child: ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     itemCount: _files.length,
                     onReorder: _reorderFiles,
