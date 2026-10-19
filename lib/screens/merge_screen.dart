@@ -232,347 +232,354 @@ class _MergeScreenState extends State<MergeScreen>
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
           leading: IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded),
+            icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFFF1F5F9)),
           ),
           title: const Text(
             'Gabungkan PDF',
             style: TextStyle(
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
+              color: Color(0xFFF1F5F9),
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
             ),
           ),
         ),
-        body: Stack(
-          children: [
-            Column(
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: Stack(
               children: [
-                // Output filename input field
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A2E),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFF6C63FF).withOpacity(0.4),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _nameController,
-                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        labelText: 'Nama File Hasil Merge',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                        suffixText: '.pdf',
-                        suffixStyle: const TextStyle(
-                          color: Color(0xFF6C63FF),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        prefixIcon: const Icon(
-                          Icons.edit_document,
-                          color: Color(0xFF6C63FF),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Storage Folder Choice & Info Badge
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFF6C63FF).withOpacity(0.25),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6C63FF).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.folder_special_rounded,
-                            color: Color(0xFF9C8FFF),
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Folder Penyimpanan:',
-                                style: TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w500),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _customOutputDirPath ?? 'Download / PDF_Merge (Default)',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton.icon(
-                          onPressed: _pickCustomFolder,
-                          icon: const Icon(Icons.drive_file_move_rounded, size: 16, color: Color(0xFF9C8FFF)),
-                          label: const Text(
-                            'Ubah',
-                            style: TextStyle(color: Color(0xFF9C8FFF), fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.08),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // File list header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Text(
-                        '${_files.length} File Dipilih',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Seret untuk ubah urutan',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Reorderable file list
-                Expanded(
-                  child: ReorderableListView.builder(
-                    buildDefaultDragHandles: false,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: _files.length,
-                    onReorder: _reorderFiles,
-                    proxyDecorator: (child, index, animation) {
-                      return Material(
-                        color: Colors.transparent,
-                        elevation: 8,
-                        borderRadius: BorderRadius.circular(14),
-                        child: child,
-                      );
-                    },
-                    itemBuilder: (context, index) {
-                      final file = _files[index];
-                      return Container(
-                        key: ValueKey(file.id),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                Column(
+                  children: [
+                    // Output filename input field
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A1A2E),
-                          borderRadius: BorderRadius.circular(14),
+                          color: const Color(0xFF151B26),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.08),
+                            color: const Color(0xFF222B3D),
+                            width: 1,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _nameController,
+                          style: const TextStyle(color: Color(0xFFF1F5F9), fontSize: 14, fontWeight: FontWeight.w500),
+                          decoration: InputDecoration(
+                            labelText: 'Nama File Hasil Merge',
+                            labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                            suffixText: '.pdf',
+                            suffixStyle: const TextStyle(
+                              color: Color(0xFF6366F1),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            prefixIcon: const Icon(
+                              Icons.edit_note_rounded,
+                              color: Color(0xFF6366F1),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Storage Folder Choice & Info Badge
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF151B26),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF222B3D),
                           ),
                         ),
                         child: Row(
                           children: [
-                            // Drag handle
-                            ReorderableDragStartListener(
-                              index: index,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.drag_handle_rounded,
-                                  color: Colors.white.withOpacity(0.4),
-                                ),
-                              ),
-                            ),
-                            // Order badge
                             Container(
-                              width: 34,
-                              height: 34,
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(10),
+                                color: const Color(0xFF1E2533),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Center(
-                                child: Text(
-                                  '${index + 1}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF6C63FF),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
+                              child: const Icon(
+                                Icons.folder_rounded,
+                                color: Color(0xFF6366F1),
+                                size: 20,
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // File info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  const Text(
+                                    'Folder Penyimpanan:',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                  ),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    file.name,
+                                    _customOutputDirPath ?? 'Download / PDF_Merge (Default)',
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                      color: Color(0xFFF1F5F9),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${file.sizeFormatted} • ${file.totalPages > 0 ? "${file.totalPages} Halaman" : "PDF"}',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.5),
-                                      fontSize: 12,
-                                    ),
-                                  ),
                                 ],
                               ),
                             ),
-                            // Remove button
-                            IconButton(
-                              onPressed: () => _removeFile(index),
-                              icon: Icon(
-                                Icons.remove_circle_outline_rounded,
-                                color: Colors.red.shade400,
-                                size: 22,
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: _pickCustomFolder,
+                              icon: const Icon(Icons.drive_file_move_rounded, size: 16, color: Color(0xFF94A3B8)),
+                              label: const Text(
+                                'Ubah',
+                                style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                              style: TextButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E2533),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Bottom Action Area
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: _buildMergeButton(),
-                  ),
-                ),
-              ],
-            ),
-
-            // Modern Progress Circular Overlay Dialog
-            if (_isMerging)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black87,
-                  child: Center(
-                    child: Container(
-                      width: 280,
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A2E),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                          color: const Color(0xFF6C63FF).withOpacity(0.5),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6C63FF).withOpacity(0.3),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                          ),
-                        ],
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // File list header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
                         children: [
-                          // Circular Progress with % inside
-                          SizedBox(
-                            width: 110,
-                            height: 110,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 110,
-                                  height: 110,
-                                  child: CircularProgressIndicator(
-                                    value: _progress,
-                                    strokeWidth: 9,
-                                    backgroundColor: Colors.white.withOpacity(0.1),
-                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
-                                  ),
-                                ),
-                                Text(
-                                  '${(_progress * 100).toInt()}%',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Menggabungkan PDF...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                           Text(
-                            _statusText,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
-                              fontSize: 13,
+                            '${_files.length} File Dipilih',
+                            style: const TextStyle(
+                              color: Color(0xFFF1F5F9),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
                             ),
-                            textAlign: TextAlign.center,
+                          ),
+                          const Spacer(),
+                          const Text(
+                            'Seret untuk ubah urutan',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+
+                    const SizedBox(height: 8),
+
+                    // Reorderable file list
+                    Expanded(
+                      child: ReorderableListView.builder(
+                        buildDefaultDragHandles: false,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemCount: _files.length,
+                        onReorder: _reorderFiles,
+                        proxyDecorator: (child, index, animation) {
+                          return Material(
+                            color: Colors.transparent,
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(12),
+                            child: child,
+                          );
+                        },
+                        itemBuilder: (context, index) {
+                          final file = _files[index];
+                          return Container(
+                            key: ValueKey(file.id),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF151B26),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF222B3D),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                // Drag handle
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.drag_handle_rounded,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                                // Order badge
+                                Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E2533),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF6366F1),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // File info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        file.name,
+                                        style: const TextStyle(
+                                          color: Color(0xFFF1F5F9),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${file.sizeFormatted} • ${file.totalPages > 0 ? "${file.totalPages} Halaman" : "PDF"}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF64748B),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Remove button
+                                IconButton(
+                                  onPressed: () => _removeFile(index),
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline_rounded,
+                                    color: Color(0xFFEF4444),
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Hapus file',
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Bottom Action Area
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: _buildMergeButton(),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-          ],
+
+                // Modern Progress Circular Overlay Dialog
+                if (_isMerging)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withOpacity(0.75),
+                      child: Center(
+                        child: Container(
+                          width: 260,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF151B26),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF222B3D),
+                              width: 1,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black45,
+                                blurRadius: 20,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Circular Progress with % inside
+                              SizedBox(
+                                width: 90,
+                                height: 90,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 90,
+                                      height: 90,
+                                      child: CircularProgressIndicator(
+                                        value: _progress,
+                                        strokeWidth: 6,
+                                        backgroundColor: const Color(0xFF222B3D),
+                                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${(_progress * 100).toInt()}%',
+                                      style: const TextStyle(
+                                        color: Color(0xFFF1F5F9),
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Menggabungkan PDF...',
+                                style: TextStyle(
+                                  color: Color(0xFFF1F5F9),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _statusText,
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -583,13 +590,13 @@ class _MergeScreenState extends State<MergeScreen>
       return Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(18),
+              color: const Color(0xFF064E3B).withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.green.withOpacity(0.4),
-                width: 1.5,
+                color: const Color(0xFF059669).withOpacity(0.5),
+                width: 1,
               ),
             ),
             child: Column(
@@ -598,28 +605,28 @@ class _MergeScreenState extends State<MergeScreen>
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF059669),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: Colors.greenAccent,
-                        size: 24,
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 16,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Merge Berhasil!',
+                            'Merge Berhasil',
                             style: TextStyle(
-                              color: Colors.greenAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              color: Color(0xFF34D399),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -628,8 +635,8 @@ class _MergeScreenState extends State<MergeScreen>
                                 ? 'Tersimpan di folder pilihan kamu'
                                 : 'Tersimpan di Download / PDF_Merge',
                             style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -642,7 +649,7 @@ class _MergeScreenState extends State<MergeScreen>
                           text: 'Hasil Merge PDF',
                         );
                       },
-                      icon: const Icon(Icons.share_rounded, color: Colors.greenAccent),
+                      icon: const Icon(Icons.share_rounded, color: Color(0xFF34D399)),
                       tooltip: 'Bagikan PDF',
                     ),
                   ],
@@ -650,8 +657,8 @@ class _MergeScreenState extends State<MergeScreen>
                 const SizedBox(height: 8),
                 Text(
                   _mergedFilePath!,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
                     fontSize: 11,
                     fontFamily: 'monospace',
                   ),
@@ -664,23 +671,23 @@ class _MergeScreenState extends State<MergeScreen>
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            height: 54,
+            height: 48,
             child: ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
+                backgroundColor: const Color(0xFF4F46E5),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                elevation: 4,
+                elevation: 0,
               ),
-              icon: const Icon(Icons.menu_book_rounded),
+              icon: const Icon(Icons.visibility_rounded, size: 18),
               label: const Text(
-                'Lihat Hasil Merge',
+                'Lihat Dokumen',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -691,26 +698,25 @@ class _MergeScreenState extends State<MergeScreen>
 
     return SizedBox(
       width: double.infinity,
-      height: 54,
+      height: 48,
       child: ElevatedButton.icon(
         onPressed: _files.length >= 2 ? _mergePdfs : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6C63FF),
+          backgroundColor: const Color(0xFF4F46E5),
           foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
-          disabledForegroundColor: Colors.white.withOpacity(0.3),
+          disabledBackgroundColor: const Color(0xFF1E2533),
+          disabledForegroundColor: const Color(0xFF64748B),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
-          elevation: 4,
-          shadowColor: const Color(0xFF6C63FF).withOpacity(0.4),
+          elevation: 0,
         ),
-        icon: const Icon(Icons.merge_type_rounded, size: 22),
+        icon: const Icon(Icons.merge_type_rounded, size: 18),
         label: Text(
           'Gabungkan ${_files.length} File PDF',
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
       ),

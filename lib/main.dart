@@ -18,27 +18,28 @@ class PdfMergeApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        colorSchemeSeed: const Color(0xFF6C63FF),
-        scaffoldBackgroundColor: const Color(0xFF0D0D1A),
+        colorSchemeSeed: const Color(0xFF4F46E5),
+        scaffoldBackgroundColor: const Color(0xFF0B0F17),
         textTheme: GoogleFonts.interTextTheme(
           ThemeData.dark().textTheme,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
+          backgroundColor: Color(0xFF0B0F17),
           elevation: 0,
           centerTitle: false,
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFF1A1A2E),
+          color: const Color(0xFF151B26),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Color(0xFF222B3D)),
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF6C63FF),
+          backgroundColor: Color(0xFF4F46E5),
           foregroundColor: Colors.white,
-          elevation: 8,
+          elevation: 4,
         ),
       ),
       home: const HomeScreen(),

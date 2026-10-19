@@ -208,7 +208,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _nightMode ? const Color(0xFF0D0D1A) : const Color(0xFF1E1E1E),
+      backgroundColor: _nightMode ? const Color(0xFF0B0F17) : const Color(0xFF1E2533),
       body: Stack(
         children: [
           // Main PDF View Area with Tap + Scroll Listener
@@ -303,15 +303,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             right: 0,
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF0D0D1A),
-                    const Color(0xFF0D0D1A).withOpacity(0.92),
-                    Colors.transparent,
-                  ],
+                color: const Color(0xFF0F141F),
+                border: const Border(
+                  bottom: BorderSide(color: Color(0xFF222B3D)),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: SafeArea(
                 bottom: false,
@@ -320,15 +322,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   children: [
                     // Primary Header Bar
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 4, 16, 4),
+                      padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
                       child: Row(
                         children: [
                           IconButton(
                             onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back_rounded),
-                            color: Colors.white,
+                            icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                            color: const Color(0xFFF1F5F9),
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.12),
+                              backgroundColor: const Color(0xFF1E2533),
+                              padding: const EdgeInsets.all(8),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -339,17 +342,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 Text(
                                   _currentFile.name,
                                   style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFF1F5F9),
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  '${_openedTabs.length} Dokumen Terbuka • ${_currentFile.sizeFormatted}',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
+                                  '${_openedTabs.length} Dokumen • ${_currentFile.sizeFormatted}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF94A3B8),
                                     fontSize: 11.5,
                                   ),
                                 ),
@@ -361,12 +364,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             onPressed: _toggleGridOverview,
                             icon: Icon(
                               _showGridOverview ? Icons.view_day_rounded : Icons.grid_view_rounded,
+                              size: 19,
                             ),
-                            color: _showGridOverview ? const Color(0xFF6C63FF) : Colors.white,
+                            color: _showGridOverview ? const Color(0xFF818CF8) : const Color(0xFF94A3B8),
                             style: IconButton.styleFrom(
-                              backgroundColor: _showGridOverview
-                                  ? const Color(0xFF6C63FF).withOpacity(0.3)
-                                  : Colors.white.withOpacity(0.12),
+                              backgroundColor: const Color(0xFF1E2533),
+                              padding: const EdgeInsets.all(8),
                             ),
                             tooltip: 'Lihat Semua Dokumen',
                           ),
@@ -376,10 +379,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             onPressed: _toggleNightMode,
                             icon: Icon(
                               _nightMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                              size: 19,
                             ),
-                            color: _nightMode ? const Color(0xFF6C63FF) : Colors.amber,
+                            color: _nightMode ? const Color(0xFF818CF8) : Colors.amber,
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.12),
+                              backgroundColor: const Color(0xFF1E2533),
+                              padding: const EdgeInsets.all(8),
                             ),
                             tooltip: _nightMode ? 'Mode Terang' : 'Mode Gelap',
                           ),
@@ -396,12 +401,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.content_cut_rounded),
-                            color: Colors.white,
+                            icon: const Icon(Icons.content_cut_rounded, size: 19),
+                            color: const Color(0xFF94A3B8),
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.12),
+                              backgroundColor: const Color(0xFF1E2533),
+                              padding: const EdgeInsets.all(8),
                             ),
-                            tooltip: 'Potong / Ekstrak Halaman',
+                            tooltip: 'Potong Halaman',
                           ),
                           const SizedBox(width: 4),
                           // Share button
@@ -412,10 +418,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 text: _currentFile.fileName,
                               );
                             },
-                            icon: const Icon(Icons.share_rounded),
-                            color: Colors.white,
+                            icon: const Icon(Icons.share_rounded, size: 19),
+                            color: const Color(0xFF94A3B8),
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.12),
+                              backgroundColor: const Color(0xFF1E2533),
+                              padding: const EdgeInsets.all(8),
                             ),
                           ),
                         ],
@@ -424,8 +431,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
 
                     // Multi-Document Tabs Scrollview
                     Container(
-                      height: 44,
-                      margin: const EdgeInsets.only(bottom: 8),
+                      height: 40,
+                      margin: const EdgeInsets.only(bottom: 6),
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -436,11 +443,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                               padding: const EdgeInsets.only(left: 4),
                               child: ActionChip(
                                 onPressed: _addNewPdfTab,
-                                avatar: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
-                                label: const Text('Buka PDF', style: TextStyle(color: Colors.white, fontSize: 12)),
-                                backgroundColor: const Color(0xFF6C63FF).withOpacity(0.4),
-                                side: BorderSide(color: const Color(0xFF6C63FF).withOpacity(0.6)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                avatar: const Icon(Icons.add_rounded, size: 16, color: Color(0xFF94A3B8)),
+                                label: const Text('Buka PDF', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+                                backgroundColor: const Color(0xFF1E2533),
+                                side: const BorderSide(color: Color(0xFF2B3548)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                             );
                           }
@@ -454,19 +461,18 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () => _switchTab(index),
-                                borderRadius: BorderRadius.circular(20),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
                                   decoration: BoxDecoration(
                                     color: isActive
-                                        ? const Color(0xFF6C63FF)
-                                        : Colors.white.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
+                                        ? const Color(0xFF4F46E5)
+                                        : const Color(0xFF1E2533),
+                                    borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                       color: isActive
-                                          ? const Color(0xFF6C63FF)
-                                          : Colors.white.withOpacity(0.15),
+                                          ? const Color(0xFF6366F1)
+                                          : const Color(0xFF2B3548),
                                     ),
                                   ),
                                   child: Row(
@@ -475,7 +481,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                       Icon(
                                         Icons.picture_as_pdf_rounded,
                                         size: 14,
-                                        color: isActive ? Colors.white : Colors.white70,
+                                        color: isActive ? Colors.white : const Color(0xFFEF4444),
                                       ),
                                       const SizedBox(width: 6),
                                       ConstrainedBox(
@@ -483,8 +489,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                         child: Text(
                                           tabFile.name,
                                           style: TextStyle(
-                                            color: isActive ? Colors.white : Colors.white70,
-                                            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                            color: isActive ? Colors.white : const Color(0xFF94A3B8),
+                                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                                             fontSize: 12,
                                           ),
                                           maxLines: 1,
@@ -494,13 +500,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                       const SizedBox(width: 4),
                                       InkWell(
                                         onTap: () => _closeTab(index),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(6),
                                         child: Padding(
                                           padding: const EdgeInsets.all(2),
                                           child: Icon(
                                             Icons.close_rounded,
                                             size: 14,
-                                            color: isActive ? Colors.white70 : Colors.white38,
+                                            color: isActive ? Colors.white70 : const Color(0xFF64748B),
                                           ),
                                         ),
                                       ),
@@ -522,26 +528,27 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
           // Bottom Page Control Indicator & Fast Page Jump Slider
           if (_isReady && !_showGridOverview)
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 250),
               curve: Curves.easeInOutCubic,
               bottom: _showControls ? 20 : -120,
               left: 20,
               right: 20,
               child: Center(
                 child: Container(
+                  constraints: const BoxConstraints(maxWidth: 420),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
+                    color: const Color(0xFF151B26),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: const [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.3),
-                        blurRadius: 20,
-                        spreadRadius: 0,
+                        color: Colors.black38,
+                        blurRadius: 16,
+                        offset: Offset(0, 4),
                       ),
                     ],
                     border: Border.all(
-                      color: const Color(0xFF6C63FF).withOpacity(0.5),
+                      color: const Color(0xFF222B3D),
                       width: 1,
                     ),
                   ),
@@ -557,7 +564,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 ? () => _pdfController?.setPage(_currentPage - 1)
                                 : null,
                             icon: const Icon(Icons.chevron_left_rounded),
-                            color: Colors.white,
+                            color: const Color(0xFFF1F5F9),
                             iconSize: 22,
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                             padding: EdgeInsets.zero,
@@ -565,9 +572,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                           Text(
                             'Halaman ${_currentPage + 1} / $_totalPages',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              color: Color(0xFFF1F5F9),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
                           IconButton(
@@ -575,7 +582,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 ? () => _pdfController?.setPage(_currentPage + 1)
                                 : null,
                             icon: const Icon(Icons.chevron_right_rounded),
-                            color: Colors.white,
+                            color: const Color(0xFFF1F5F9),
                             iconSize: 22,
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                             padding: EdgeInsets.zero,
@@ -587,12 +594,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                       if (_totalPages > 1)
                         SliderTheme(
                           data: SliderThemeData(
-                            trackHeight: 4,
-                            activeTrackColor: const Color(0xFF6C63FF),
-                            inactiveTrackColor: Colors.white.withOpacity(0.15),
-                            thumbColor: const Color(0xFF9C8FFF),
-                            overlayColor: const Color(0xFF6C63FF).withOpacity(0.2),
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                            trackHeight: 3,
+                            activeTrackColor: const Color(0xFF4F46E5),
+                            inactiveTrackColor: const Color(0xFF222B3D),
+                            thumbColor: const Color(0xFF6366F1),
+                            overlayColor: const Color(0xFF4F46E5).withOpacity(0.18),
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                           ),
                           child: Slider(
                             value: _currentPage.toDouble().clamp(0.0, (_totalPages - 1).toDouble()),
@@ -600,7 +607,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             max: (_totalPages - 1).toDouble(),
                             divisions: _totalPages > 1 ? _totalPages - 1 : 1,
                             onChanged: (value) {
-
                               final pageNum = value.round();
                               _pdfController?.setPage(pageNum);
                             },
@@ -616,160 +622,172 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
           if (_showGridOverview)
             Positioned.fill(
               child: Container(
-                color: const Color(0xFF0D0D1A).withOpacity(0.95),
+                color: const Color(0xFF0B0F17).withOpacity(0.97),
                 child: SafeArea(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        child: Row(
-                          children: [
-                            const Text(
-                              'Dokumen Terbuka',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 960),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  'Dokumen Terbuka',
+                                  style: TextStyle(
+                                    color: Color(0xFFF1F5F9),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  onPressed: _toggleGridOverview,
+                                  icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
+                                  tooltip: 'Tutup',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: const Color(0xFF151B26),
+                                    side: const BorderSide(color: Color(0xFF222B3D)),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: _toggleGridOverview,
-                              icon: const Icon(Icons.close_rounded, color: Colors.white),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.1),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: GridView.builder(
-                          padding: const EdgeInsets.all(16),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.75,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
                           ),
-                          itemCount: _openedTabs.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == _openedTabs.length) {
-                              return InkWell(
-                                onTap: () {
-                                  _toggleGridOverview();
-                                  _addNewPdfTab();
-                                },
-                                borderRadius: BorderRadius.circular(20),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: const Color(0xFF6C63FF).withOpacity(0.3),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.add_circle_outline_rounded, color: Color(0xFF6C63FF), size: 40),
-                                      SizedBox(height: 12),
-                                      Text(
-                                        'Buka PDF Lain',
-                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, gridConstraints) {
+                                final isDesktopGrid = gridConstraints.maxWidth >= 720;
+                                final crossAxisCount = isDesktopGrid ? 4 : 2;
 
-                            final file = _openedTabs[index];
-                            final isCurrent = index == _activeTabIndex;
-
-                            return InkWell(
-                              onTap: () => _switchTab(index),
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1A2E),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: isCurrent ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.12),
-                                    width: isCurrent ? 2 : 1,
+                                return GridView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    childAspectRatio: 0.8,
+                                    crossAxisSpacing: 14,
+                                    mainAxisSpacing: 14,
                                   ),
-                                  boxShadow: isCurrent
-                                      ? [
-                                          BoxShadow(
-                                            color: const Color(0xFF6C63FF).withOpacity(0.4),
-                                            blurRadius: 12,
-                                          )
-                                        ]
-                                      : [],
-                                ),
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.05),
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                                        ),
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.picture_as_pdf_rounded,
-                                            size: 48,
-                                            color: isCurrent ? const Color(0xFF6C63FF) : Colors.white38,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  file.name,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 13,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                Text(
-                                                  file.sizeFormatted,
-                                                  style: TextStyle(
-                                                    color: Colors.white.withOpacity(0.5),
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
+                                  itemCount: _openedTabs.length + 1,
+                                  itemBuilder: (context, index) {
+                                    if (index == _openedTabs.length) {
+                                      return InkWell(
+                                        onTap: () {
+                                          _toggleGridOverview();
+                                          _addNewPdfTab();
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF151B26).withOpacity(0.5),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: const Color(0xFF222B3D),
+                                              width: 1,
                                             ),
                                           ),
-                                          IconButton(
-                                            onPressed: () => _closeTab(index),
-                                            icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                          child: const Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.add_rounded, color: Color(0xFF6366F1), size: 32),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Buka PDF Lain',
+                                                style: TextStyle(
+                                                  color: Color(0xFFF1F5F9),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
+                                      );
+                                    }
+
+                                    final file = _openedTabs[index];
+                                    final isCurrent = index == _activeTabIndex;
+
+                                    return InkWell(
+                                      onTap: () => _switchTab(index),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF151B26),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: isCurrent ? const Color(0xFF4F46E5) : const Color(0xFF222B3D),
+                                            width: isCurrent ? 1.5 : 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Expanded(
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF0F141F),
+                                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                                                ),
+                                                child: Center(
+                                                  child: Icon(
+                                                    Icons.picture_as_pdf_rounded,
+                                                    size: 40,
+                                                    color: isCurrent ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          file.name,
+                                                          style: const TextStyle(
+                                                            color: Color(0xFFF1F5F9),
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 12,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                        const SizedBox(height: 2),
+                                                        Text(
+                                                          file.sizeFormatted,
+                                                          style: const TextStyle(
+                                                            color: Color(0xFF64748B),
+                                                            fontSize: 11,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    onPressed: () => _closeTab(index),
+                                                    icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF64748B)),
+                                                    padding: EdgeInsets.zero,
+                                                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                                    tooltip: 'Tutup dokumen',
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -782,15 +800,15 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   CircularProgressIndicator(
-                    color: Color(0xFF6C63FF),
-                    strokeWidth: 3,
+                    color: Color(0xFF4F46E5),
+                    strokeWidth: 2.5,
                   ),
                   SizedBox(height: 16),
                   Text(
                     'Memuat Dokumen...',
                     style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                      color: Color(0xFF94A3B8),
+                      fontSize: 13,
                     ),
                   ),
                 ],

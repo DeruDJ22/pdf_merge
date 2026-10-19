@@ -4,7 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import '../models/pdf_file_model.dart';
 import '../services/history_service.dart';
 import '../widgets/pdf_card.dart';
-import '../widgets/gradient_background.dart';
 import '../widgets/empty_state.dart';
 import 'pdf_viewer_screen.dart';
 import 'merge_screen.dart';
@@ -100,9 +99,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${models.length} file PDF berhasil diterima dan ditambahkan'),
-            backgroundColor: const Color(0xFF6C63FF),
+            backgroundColor: const Color(0xFF1E2533),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -135,283 +134,180 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black54,
-                blurRadius: 20,
-                spreadRadius: 5,
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF151B26),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF222B3D)),
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.picture_as_pdf_rounded,
-                      color: Color(0xFF6C63FF),
-                      size: 24,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E2533),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          color: Color(0xFFEF4444),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              file.name,
+                              style: const TextStyle(
+                                color: Color(0xFFF1F5F9),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Pilih tindakan untuk dokumen ini:',
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          file.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 18),
+
+                  _buildModalTile(
+                    title: 'Baca Dokumen',
+                    subtitle: 'Buka langsung dengan penampil PDF vertikal halus & mode malam',
+                    icon: Icons.menu_book_rounded,
+                    accentColor: const Color(0xFF4F46E5),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _openViewer(file);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  _buildModalTile(
+                    title: 'Tambahkan ke Antrean Merge',
+                    subtitle: 'Gabungkan file ini dengan dokumen PDF lainnya',
+                    icon: Icons.call_merge_rounded,
+                    accentColor: const Color(0xFF059669),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _isMergeMode = true;
+                        if (!_mergeQueue.contains(file)) {
+                          _mergeQueue.add(file);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  _buildModalTile(
+                    title: 'Potong / Ekstrak Halaman',
+                    subtitle: 'Ambil rentang halaman tertentu dan simpan terpisah',
+                    icon: Icons.content_cut_rounded,
+                    accentColor: const Color(0xFFD97706),
+                    onTap: () {
+                      Navigator.pop(context);
+                      showDialog(
+                        context: context,
+                        builder: (context) => TrimPdfDialog(
+                          pdfFile: file,
+                          onTrimComplete: (trimmedPath) => _loadSavedHistory(),
                         ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Pilih aksi yang ingin dilakukan:',
-                          style: TextStyle(
-                            color: Colors.white54,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-
-              // Option 1: Baca PDF
-              InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                  _openViewer(file);
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF6C63FF).withOpacity(0.2),
-                        const Color(0xFF6C63FF).withOpacity(0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF6C63FF).withOpacity(0.4),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF6C63FF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.menu_book_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '📖 Baca PDF Ini',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Buka langsung dengan viewer warna asli & night mode',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Option 2: Gabungkan (Merge) PDF
-              InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _isMergeMode = true;
-                    if (!_mergeQueue.contains(file)) {
-                      _mergeQueue.add(file);
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.merge_type_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '🔗 Tambahkan ke Merge PDF',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Pilih file lain dan gabungkan menjadi 1 file PDF',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Option 3: Potong / Ekstrak Halaman
-              InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                  showDialog(
-                    context: context,
-                    builder: (context) => TrimPdfDialog(
-                      pdfFile: file,
-                      onTrimComplete: (trimmedPath) => _loadSavedHistory(),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF9C8FFF).withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.content_cut_rounded,
-                          color: Color(0xFF9C8FFF),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '✂️ Potong / Ekstrak Halaman',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Ambil rentang halaman tertentu (misal Hal 100-200)',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildModalTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B2230),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF263246)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: accentColor, size: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFFF1F5F9),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B), size: 18),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -471,10 +367,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('${pickedModels.length} file PDF berhasil ditambahkan ke beranda'),
-                backgroundColor: const Color(0xFF6C63FF),
+                content: Text('${pickedModels.length} file PDF berhasil ditambahkan'),
+                backgroundColor: const Color(0xFF1E2533),
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             );
           }
@@ -531,10 +427,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text('File ditambahkan. Pilih 1 file lagi untuk digabungkan.'),
-                  backgroundColor: const Color(0xFF6C63FF),
+                  content: const Text('File ditambahkan. Pilih minimal 1 file lagi untuk digabungkan.'),
+                  backgroundColor: const Color(0xFF1E2533),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
             }
@@ -592,92 +488,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF151B26),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF222B3D)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pilih Aksi Dokumen',
+                    style: TextStyle(
+                      color: Color(0xFFF1F5F9),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Pilih Aksi Dokumen',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6C63FF).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 14),
+                  _buildModalTile(
+                    title: 'Buka & Baca PDF',
+                    subtitle: 'Buka satu atau beberapa file PDF untuk dibaca',
+                    icon: Icons.menu_book_rounded,
+                    accentColor: const Color(0xFF4F46E5),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickAndReadPdf();
+                    },
                   ),
-                  child: const Icon(Icons.menu_book_rounded, color: Color(0xFF6C63FF)),
-                ),
-                title: const Text('📖 Buka & Baca PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Buka satu atau beberapa file PDF untuk dibaca', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickAndReadPdf();
-                },
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 8),
+                  _buildModalTile(
+                    title: 'Gabungkan PDF (Merge)',
+                    subtitle: 'Pilih beberapa file untuk digabungkan menjadi satu file',
+                    icon: Icons.call_merge_rounded,
+                    accentColor: const Color(0xFF059669),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickAndMergePdfs();
+                    },
                   ),
-                  child: const Icon(Icons.merge_type_rounded, color: Colors.greenAccent),
-                ),
-                title: const Text('🔗 Gabungkan PDF (Merge)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Pilih beberapa file untuk digabung', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickAndMergePdfs();
-                },
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF9C8FFF).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 8),
+                  _buildModalTile(
+                    title: 'Potong / Ekstrak Halaman PDF',
+                    subtitle: 'Ambil rentang halaman spesifik dari suatu file',
+                    icon: Icons.content_cut_rounded,
+                    accentColor: const Color(0xFFD97706),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickAndTrimPdf();
+                    },
                   ),
-                  child: const Icon(Icons.content_cut_rounded, color: Color(0xFF9C8FFF)),
-                ),
-                title: const Text('✂️ Potong / Ekstrak Halaman PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Ambil rentang halaman spesifik', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickAndTrimPdf();
-                },
+                ],
               ),
-              const SizedBox(height: 12),
-            ],
+            ),
           ),
         );
       },
@@ -718,21 +591,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('Hapus Semua Riwayat?', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF151B26),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFF222B3D)),
+        ),
+        title: const Text('Hapus Riwayat', style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 16, fontWeight: FontWeight.w700)),
         content: const Text(
-          'Daftar file riwayat akan dibersihkan. File fisik di HP kamu tidak akan terhapus.',
-          style: TextStyle(color: Colors.white70),
+          'Daftar file riwayat akan dibersihkan. File fisik dokumen Anda tetap aman.',
+          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+            child: const Text('Batal', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-            child: const Text('Hapus Semua', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
+            ),
+            child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -756,10 +638,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cache dibersihkan! Menghapus $freedMb MB data sementara.'),
-            backgroundColor: const Color(0xFF6C63FF),
+            content: Text('Cache dibersihkan ($freedMb MB data sementara)'),
+            backgroundColor: const Color(0xFF1E2533),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -805,10 +687,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F1A),
+      backgroundColor: const Color(0xFF0B0F17),
       appBar: _buildAppBar(),
-      body: GradientBackground(
-        child: _buildBodyContent(),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 768;
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isDesktop ? 960 : double.infinity),
+              child: _buildBodyContent(),
+            ),
+          );
+        },
       ),
       floatingActionButton: _buildFab(),
     );
@@ -816,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFF0F0F1A),
+      backgroundColor: const Color(0xFF0B0F17),
       elevation: 0,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -824,26 +714,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const Text(
             'PDF Merge & Reader',
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: -0.5,
+              color: Color(0xFFF1F5F9),
+              letterSpacing: -0.3,
             ),
           ),
           if (_isMergeMode)
             Text(
-              '${_mergeQueue.length} file dipilih',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.white.withOpacity(0.6),
+              '${_mergeQueue.length} file dipilih untuk digabung',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF94A3B8),
               ),
             )
           else if (_openedFiles.isNotEmpty)
             Text(
-              '${_openedFiles.length} Riwayat Dokumen',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.white.withOpacity(0.6),
+              '${_openedFiles.length} file riwayat',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF94A3B8),
               ),
             ),
         ],
@@ -852,41 +742,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (_isMergeMode) ...[
           if (_mergeQueue.length >= 2)
             _buildActionButton(
-              icon: Icons.merge_type_rounded,
+              icon: Icons.call_merge_rounded,
               label: 'Merge',
-              color: const Color(0xFF6C63FF),
+              color: const Color(0xFF4F46E5),
               onTap: _openMergeScreen,
             ),
           const SizedBox(width: 8),
           _buildActionButton(
             icon: Icons.close_rounded,
             label: 'Batal',
-            color: Colors.red.shade400,
+            color: const Color(0xFFEF4444),
             onTap: _toggleMergeMode,
           ),
         ] else ...[
           _buildActionButton(
             icon: Icons.content_cut_rounded,
-            label: 'Potong PDF',
-            color: const Color(0xFF9C8FFF),
+            label: 'Potong',
+            color: const Color(0xFF94A3B8),
             onTap: _pickAndTrimPdf,
           ),
           const SizedBox(width: 6),
           _buildActionButton(
-            icon: Icons.merge_type_rounded,
+            icon: Icons.call_merge_rounded,
             label: 'Merge',
-            color: const Color(0xFF6C63FF),
+            color: const Color(0xFF4F46E5),
             onTap: _toggleMergeMode,
           ),
           const SizedBox(width: 4),
           IconButton(
             onPressed: _clearAppCache,
-            icon: const Icon(Icons.cleaning_services_rounded, color: Colors.white70, size: 20),
-            tooltip: 'Bersihkan Cache Aplikasi',
+            icon: const Icon(Icons.cleaning_services_rounded, color: Color(0xFF94A3B8), size: 19),
+            tooltip: 'Bersihkan Cache',
           ),
           IconButton(
             onPressed: _clearAllHistory,
-            icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white70, size: 20),
+            icon: const Icon(Icons.delete_sweep_rounded, color: Color(0xFF94A3B8), size: 19),
             tooltip: 'Hapus Semua Riwayat',
           ),
         ],
@@ -902,24 +792,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: color.withOpacity(0.15),
-      borderRadius: BorderRadius.circular(12),
+      color: const Color(0xFF151B26),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF222B3D)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 18, color: color),
+              Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontSize: 12.5,
                 ),
               ),
             ],
@@ -932,61 +826,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildDashboardStats() {
     final total = _openedFiles.length;
     final completed = _openedFiles.where((f) => f.totalPages > 0 && f.lastReadPage + 1 >= f.totalPages).length;
-    final inProgress = total - completed;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E).withOpacity(0.8),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildStatChip(
-              icon: Icons.library_books_rounded,
-              label: '$total Dokumen',
-              color: const Color(0xFF6C63FF),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Text(
+            '$total dokumen tersimpan',
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
             ),
-            Container(width: 1, height: 18, color: Colors.white.withOpacity(0.1)),
-            _buildStatChip(
-              icon: Icons.check_circle_rounded,
-              label: '$completed Selesai',
-              color: Colors.greenAccent,
-            ),
-            Container(width: 1, height: 18, color: Colors.white.withOpacity(0.1)),
-            _buildStatChip(
-              icon: Icons.auto_stories_rounded,
-              label: '$inProgress Dibaca',
-              color: const Color(0xFF9C8FFF),
+          ),
+          if (completed > 0) ...[
+            const Text('  •  ', style: TextStyle(color: Color(0xFF475569), fontSize: 12)),
+            Text(
+              '$completed selesai dibaca',
+              style: const TextStyle(
+                color: Color(0xFF10B981),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
-        ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildStatChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 
@@ -1002,22 +867,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return Column(
       children: [
-        // Dashboard Stats Bar
         _buildDashboardStats(),
 
         // Search Bar & Sort Dropdown
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
           child: Row(
             children: [
               Expanded(
                 child: Container(
-                  height: 46,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E),
-                    borderRadius: BorderRadius.circular(16),
+                    color: const Color(0xFF151B26),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
+                      color: const Color(0xFF222B3D),
                     ),
                   ),
                   child: TextField(
@@ -1027,14 +891,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         _searchQuery = val;
                       });
                     },
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: const TextStyle(color: Color(0xFFF1F5F9), fontSize: 13.5),
                     decoration: InputDecoration(
                       hintText: 'Cari file PDF di riwayat...',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                      prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.5), size: 20),
+                      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.5),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF64748B), size: 19),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 18),
+                              icon: const Icon(Icons.clear_rounded, color: Color(0xFF94A3B8), size: 17),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {
@@ -1044,7 +908,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             )
                           : null,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
                     ),
                   ),
                 ),
@@ -1053,18 +917,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               // Sort menu button
               Container(
-                height: 46,
+                height: 44,
+                width: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  color: const Color(0xFF151B26),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF222B3D)),
                 ),
                 child: PopupMenuButton<String>(
                   initialValue: _sortOrder,
-                  icon: const Icon(Icons.sort_rounded, color: Color(0xFF9C8FFF), size: 22),
+                  icon: const Icon(Icons.sort_rounded, color: Color(0xFF94A3B8), size: 20),
                   tooltip: 'Urutkan Riwayat',
-                  color: const Color(0xFF1A1A2E),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  color: const Color(0xFF151B26),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: Color(0xFF222B3D)),
+                  ),
                   onSelected: (value) {
                     setState(() {
                       _sortOrder = value;
@@ -1075,9 +943,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       value: 'recent',
                       child: Row(
                         children: [
-                          Icon(Icons.history_rounded, color: Colors.white70, size: 18),
+                          Icon(Icons.history_rounded, color: Color(0xFF94A3B8), size: 17),
                           SizedBox(width: 10),
-                          Text('Terbaru Dibuka', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          Text('Terbaru Dibuka', style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 13)),
                         ],
                       ),
                     ),
@@ -1085,9 +953,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       value: 'name',
                       child: Row(
                         children: [
-                          Icon(Icons.sort_by_alpha_rounded, color: Colors.white70, size: 18),
+                          Icon(Icons.sort_by_alpha_rounded, color: Color(0xFF94A3B8), size: 17),
                           SizedBox(width: 10),
-                          Text('Nama File (A-Z)', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          Text('Nama File (A-Z)', style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 13)),
                         ],
                       ),
                     ),
@@ -1095,9 +963,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       value: 'size',
                       child: Row(
                         children: [
-                          Icon(Icons.data_usage_rounded, color: Colors.white70, size: 18),
+                          Icon(Icons.data_usage_rounded, color: Color(0xFF94A3B8), size: 17),
                           SizedBox(width: 10),
-                          Text('Ukuran File', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          Text('Ukuran File', style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 13)),
                         ],
                       ),
                     ),
@@ -1105,9 +973,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       value: 'progress',
                       child: Row(
                         children: [
-                          Icon(Icons.auto_stories_rounded, color: Colors.white70, size: 18),
+                          Icon(Icons.auto_stories_rounded, color: Color(0xFF94A3B8), size: 17),
                           SizedBox(width: 10),
-                          Text('Progres Membaca', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          Text('Progres Membaca', style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 13)),
                         ],
                       ),
                     ),
@@ -1124,11 +992,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ? Center(
                   child: Text(
                     'File "$_searchQuery" tidak ditemukan',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    style: const TextStyle(color: Color(0xFF64748B)),
                   ),
                 )
               : AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 250),
                   child: ReorderableListView.builder(
                     buildDefaultDragHandles: false,
                     key: ValueKey('$_isMergeMode$_sortOrder'),
@@ -1138,8 +1006,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     proxyDecorator: (child, index, animation) {
                       return Material(
                         color: Colors.transparent,
-                        elevation: 8,
-                        borderRadius: BorderRadius.circular(16),
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(12),
                         child: child,
                       );
                     },
@@ -1183,34 +1051,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildFab() {
     return ScaleTransition(
       scale: _fabScaleAnimation,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6C63FF).withOpacity(0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+      child: FloatingActionButton.extended(
+        onPressed: _showFabActionSheet,
+        backgroundColor: const Color(0xFF4F46E5),
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: FloatingActionButton.extended(
-          onPressed: _showFabActionSheet,
-          backgroundColor: const Color(0xFF6C63FF),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          highlightElevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          icon: const Icon(Icons.add_rounded, size: 24),
-          label: const Text(
-            'Buka / Impor PDF',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              letterSpacing: -0.2,
-            ),
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: const Text(
+          'Buka / Impor PDF',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: -0.1,
           ),
         ),
       ),

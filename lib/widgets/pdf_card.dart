@@ -106,56 +106,37 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
         child: GestureDetector(
           onTap: widget.onTap,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: widget.isSelected
-                  ? const Color(0xFF6C63FF).withOpacity(0.15)
-                  : const Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.circular(16),
+                  ? const Color(0xFF1E1B4B).withOpacity(0.6)
+                  : const Color(0xFF151B26),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: widget.isSelected
-                    ? const Color(0xFF6C63FF).withOpacity(0.6)
-                    : Colors.white.withOpacity(0.08),
+                    ? const Color(0xFF6366F1)
+                    : const Color(0xFF222B3D),
                 width: widget.isSelected ? 1.5 : 1,
               ),
-              boxShadow: [
-                if (widget.isSelected)
-                  BoxShadow(
-                    color: const Color(0xFF6C63FF).withOpacity(0.15),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                  ),
-              ],
             ),
             child: Row(
               children: [
-                // PDF Cover Thumbnail or Icon / Merge order badge
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: 50,
-                  height: 62,
+                // PDF Cover Thumbnail or Document Badge
+                Container(
+                  width: 48,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161626),
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF1C2230),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
+                      color: const Color(0xFF2B3548),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (widget.isSelected
-                                ? const Color(0xFF6C63FF)
-                                : const Color(0xFFE74C3C))
-                            .withOpacity(0.25),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(7),
                     child: Stack(
                       children: [
                         if (hasThumbnail)
@@ -167,25 +148,11 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                           )
                         else
                           Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: widget.isSelected
-                                    ? [
-                                        const Color(0xFF6C63FF),
-                                        const Color(0xFF9C8FFF),
-                                      ]
-                                    : [
-                                        const Color(0xFFE74C3C).withOpacity(0.8),
-                                        const Color(0xFFFF6B6B).withOpacity(0.8),
-                                      ],
-                              ),
-                            ),
+                            color: const Color(0xFF1C2230),
                             child: const Center(
                               child: Icon(
                                 Icons.picture_as_pdf_rounded,
-                                color: Colors.white,
+                                color: Color(0xFFEF4444),
                                 size: 24,
                               ),
                             ),
@@ -195,7 +162,7 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                         if (widget.isMergeMode && widget.mergeOrder != null)
                           Positioned.fill(
                             child: Container(
-                              color: const Color(0xFF6C63FF).withOpacity(0.85),
+                              color: const Color(0xFF4F46E5),
                               child: Center(
                                 child: Text(
                                   '${widget.mergeOrder}',
@@ -223,10 +190,10 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                       Text(
                         widget.pdfFile.name,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFFF1F5F9),
                           fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          letterSpacing: -0.3,
+                          fontSize: 14.5,
+                          letterSpacing: -0.2,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -234,16 +201,16 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(
-                            Icons.data_usage_rounded,
-                            size: 12,
-                            color: Colors.white.withOpacity(0.4),
+                          const Icon(
+                            Icons.description_outlined,
+                            size: 13,
+                            color: Color(0xFF64748B),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             widget.pdfFile.sizeFormatted,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
+                            style: const TextStyle(
+                              color: Color(0xFF94A3B8),
                               fontSize: 12,
                             ),
                           ),
@@ -255,11 +222,11 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                           children: [
                             Expanded(
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(3),
                                 child: LinearProgressIndicator(
                                   value: widget.pdfFile.progressPercentage,
-                                  backgroundColor: Colors.white.withOpacity(0.1),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
+                                  backgroundColor: const Color(0xFF222B3D),
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
                                   minHeight: 4,
                                 ),
                               ),
@@ -268,9 +235,9 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                             Text(
                               'Hal ${widget.pdfFile.lastReadPage + 1}/${widget.pdfFile.totalPages}',
                               style: const TextStyle(
-                                color: Color(0xFF9C8FFF),
+                                color: Color(0xFF818CF8),
                                 fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -284,20 +251,19 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
 
                 // Action indicator
                 if (widget.isMergeMode)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 28,
-                    height: 28,
+                  Container(
+                    width: 26,
+                    height: 26,
                     decoration: BoxDecoration(
                       color: widget.isSelected
-                          ? const Color(0xFF6C63FF)
-                          : Colors.white.withOpacity(0.1),
+                          ? const Color(0xFF4F46E5)
+                          : Colors.transparent,
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: widget.isSelected
-                            ? const Color(0xFF6C63FF)
-                            : Colors.white.withOpacity(0.2),
-                        width: 2,
+                            ? const Color(0xFF4F46E5)
+                            : const Color(0xFF475569),
+                        width: 1.5,
                       ),
                     ),
                     child: widget.isSelected
@@ -315,31 +281,31 @@ class _PdfCardState extends State<PdfCard> with SingleTickerProviderStateMixin {
                       if (widget.onTrimTap != null)
                         IconButton(
                           onPressed: widget.onTrimTap,
-                          icon: const Icon(Icons.content_cut_rounded, size: 18),
-                          color: const Color(0xFF9C8FFF),
+                          icon: const Icon(Icons.content_cut_rounded, size: 17),
+                          color: const Color(0xFF94A3B8),
                           tooltip: 'Potong / Ekstrak Halaman',
                           style: IconButton.styleFrom(
-                            backgroundColor: const Color(0xFF6C63FF).withOpacity(0.12),
-                            padding: const EdgeInsets.all(6),
-                            minimumSize: const Size(30, 30),
+                            backgroundColor: const Color(0xFF1E2533),
+                            padding: const EdgeInsets.all(8),
+                            minimumSize: const Size(36, 36),
                           ),
                         ),
-                      const SizedBox(width: 2),
+                      const SizedBox(width: 4),
                       IconButton(
                         onPressed: widget.onDismissed,
-                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                        color: Colors.red.shade400,
+                        icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                        color: const Color(0xFFF87171),
                         tooltip: 'Hapus dari Riwayat',
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.red.withOpacity(0.1),
-                          padding: const EdgeInsets.all(6),
-                          minimumSize: const Size(30, 30),
+                          backgroundColor: const Color(0xFF2C1E24),
+                          padding: const EdgeInsets.all(8),
+                          minimumSize: const Size(36, 36),
                         ),
                       ),
-                      const SizedBox(width: 2),
-                      Icon(
+                      const SizedBox(width: 4),
+                      const Icon(
                         Icons.chevron_right_rounded,
-                        color: Colors.white.withOpacity(0.3),
+                        color: Color(0xFF64748B),
                         size: 20,
                       ),
                     ],

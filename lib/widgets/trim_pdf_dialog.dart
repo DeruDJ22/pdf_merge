@@ -186,82 +186,95 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.greenAccent.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: Colors.greenAccent,
-                  size: 36,
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Color(0xFF151B26),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border(
+                  top: BorderSide(color: Color(0xFF222B3D)),
+                  left: BorderSide(color: Color(0xFF222B3D)),
+                  right: BorderSide(color: Color(0xFF222B3D)),
                 ),
               ),
-              const SizedBox(height: 14),
-              const Text(
-                'File Berhasil Dipotong! 🎉',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Tersimpan di:\n${fileModel.path}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Share.shareXFiles([XFile(fileModel.path)]);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: const Icon(Icons.share_rounded, color: Colors.white),
-                      label: const Text('Bagikan', style: TextStyle(color: Colors.white)),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF059669).withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Color(0xFF34D399),
+                      size: 32,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: const Icon(Icons.check_rounded, color: Colors.white),
-                      label: const Text('Selesai', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'File Berhasil Dipotong',
+                    style: TextStyle(
+                      color: Color(0xFFF1F5F9),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                     ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Tersimpan di:\n${fileModel.path}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Share.shareXFiles([XFile(fileModel.path)]);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: const BorderSide(color: Color(0xFF222B3D)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.share_rounded, color: Color(0xFFF1F5F9), size: 18),
+                          label: const Text('Bagikan', style: TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4F46E5),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+                          label: const Text('Selesai', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -281,23 +294,26 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
     final maxPages = widget.pdfFile.totalPages;
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: const Color(0xFF151B26),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFF222B3D)),
+      ),
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF6C63FF).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFF1E2533),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.content_cut_rounded, color: Color(0xFF6C63FF), size: 22),
+            child: const Icon(Icons.content_cut_rounded, color: Color(0xFF6366F1), size: 20),
           ),
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Potong / Ekstrak Halaman',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              'Potong Halaman',
+              style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -311,13 +327,13 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: const Color(0xFF0F141F),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF222B3D)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.picture_as_pdf_rounded, color: Colors.redAccent, size: 24),
+                  const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFEF4444), size: 22),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -325,13 +341,13 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                       children: [
                         Text(
                           widget.pdfFile.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.w600, fontSize: 13),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           maxPages > 0 ? 'Total $maxPages Halaman' : widget.pdfFile.sizeFormatted,
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
                         ),
                       ],
                     ),
@@ -343,12 +359,12 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
 
             // Live PDF Page Preview Area
             Container(
-              height: 210,
+              height: 200,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: const Color(0xFF161626),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+                color: const Color(0xFF0F141F),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF222B3D)),
               ),
               child: Stack(
                 children: [
@@ -381,15 +397,15 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.75),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white12),
+                            color: const Color(0xFF151B26).withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFF222B3D)),
                           ),
                           child: Text(
-                            'Preview Hal: $_previewPage / ${maxPages > 0 ? maxPages : _pdfTotalPages}',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            'Hal: $_previewPage / ${maxPages > 0 ? maxPages : _pdfTotalPages}',
+                            style: const TextStyle(color: Color(0xFFF1F5F9), fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
                         Row(
@@ -399,16 +415,16 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                                 _startPageController.text = '$_previewPage';
                                 setState(() {});
                               },
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF6C63FF),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: const Color(0xFF4F46E5),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(
                                   'Set Mulai',
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ),
@@ -418,16 +434,17 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                                 _endPageController.text = '$_previewPage';
                                 setState(() {});
                               },
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF9C8FFF),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: const Color(0xFF1E2533),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF222B3D)),
                                 ),
                                 child: const Text(
                                   'Set Akhir',
-                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Color(0xFFF1F5F9), fontSize: 10, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ),
@@ -443,10 +460,10 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
 
             // Page range inputs
             const Text(
-              'Rentang Halaman yang Ingin Diambil:',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+              'Rentang Halaman:',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
             Row(
               children: [
@@ -454,25 +471,29 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Dari Hal', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                      const Text('Mulai', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
                       const SizedBox(height: 4),
                       TextField(
                         controller: _startPageController,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.w600),
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           hintText: '1',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
                           filled: true,
-                          fillColor: const Color(0xFF161626),
+                          fillColor: const Color(0xFF0F141F),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFF222B3D)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFF222B3D)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFF4F46E5)),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
@@ -482,31 +503,35 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: Text('s/d', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold)),
+                  child: Text('s/d', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                 ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Sampai Hal', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                      const Text('Sampai', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
                       const SizedBox(height: 4),
                       TextField(
                         controller: _endPageController,
                         keyboardType: TextInputType.number,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: Color(0xFFF1F5F9), fontWeight: FontWeight.w600),
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
                           hintText: maxPages > 0 ? '$maxPages' : '100',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
                           filled: true,
-                          fillColor: const Color(0xFF161626),
+                          fillColor: const Color(0xFF0F141F),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFF222B3D)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFF222B3D)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFF4F46E5)),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
@@ -522,48 +547,52 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF6C63FF).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFF1E2533),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded, color: Color(0xFF9C8FFF), size: 16),
+                  const Icon(Icons.info_outline_rounded, color: Color(0xFF6366F1), size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _pageCountToExtract > 0
-                          ? 'Akan menyimpan $_pageCountToExtract Halaman (Hal $_startPage - $_endPage)'
+                          ? 'Mengekstrak $_pageCountToExtract Halaman (Hal $_startPage - $_endPage)'
                           : 'Rentang halaman tidak valid',
                       style: TextStyle(
-                        color: _pageCountToExtract > 0 ? const Color(0xFF9C8FFF) : Colors.redAccent,
+                        color: _pageCountToExtract > 0 ? const Color(0xFFF1F5F9) : const Color(0xFFEF4444),
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Output filename input
-            Text('Nama File Hasil Potongan:', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+            const Text('Nama File Hasil:', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
             const SizedBox(height: 4),
             TextField(
               controller: _nameController,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: Color(0xFFF1F5F9), fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Nama_File_Potongan.pdf',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: const TextStyle(color: Color(0xFF64748B)),
                 filled: true,
-                fillColor: const Color(0xFF161626),
+                fillColor: const Color(0xFF0F141F),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF222B3D)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF222B3D)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF4F46E5)),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
@@ -578,21 +607,21 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                       alignment: Alignment.center,
                       children: [
                         SizedBox(
-                          width: 60,
-                          height: 60,
+                          width: 50,
+                          height: 50,
                           child: CircularProgressIndicator(
                             value: _currentProgress / 100,
-                            strokeWidth: 5,
-                            backgroundColor: Colors.white10,
-                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
+                            strokeWidth: 4,
+                            backgroundColor: const Color(0xFF222B3D),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
                           ),
                         ),
                         Text(
                           '$_currentProgress%',
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            color: Color(0xFFF1F5F9),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -600,7 +629,7 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
                     const SizedBox(height: 10),
                     Text(
                       'Memotong Halaman $_processedPages / $_totalExtractPages...',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                     ),
                   ],
                 ),
@@ -613,17 +642,19 @@ class _TrimPdfDialogState extends State<TrimPdfDialog> {
         if (!_isProcessing) ...[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.white54)),
+            child: const Text('Batal', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
           ElevatedButton.icon(
             onPressed: _pageCountToExtract > 0 ? _startTrimming : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: const Color(0xFF4F46E5),
+              disabledBackgroundColor: const Color(0xFF1E2533),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
             ),
-            icon: const Icon(Icons.content_cut_rounded, color: Colors.white, size: 18),
-            label: const Text('Potong Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            icon: const Icon(Icons.content_cut_rounded, color: Colors.white, size: 16),
+            label: const Text('Potong', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ],
       ],
