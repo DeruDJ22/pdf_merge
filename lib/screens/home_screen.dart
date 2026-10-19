@@ -66,9 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     platform.setMethodCallHandler((call) async {
       if (call.method == 'onNewIntent') {
         final paths = (call.arguments as List?)?.cast<String>() ?? [];
-        for (final path in paths) {
-          await _handleIncomingPdfPath(path);
-        }
+        await _handleIncomingPdfPaths(paths);
       }
     });
   }
@@ -77,23 +75,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final result = await platform.invokeMethod('getInitialIntent');
       if (result != null && result is List) {
-        for (final path in result.cast<String>()) {
-          await _handleIncomingPdfPath(path);
-        }
+        final paths = result.cast<String>();
+        await _handleIncomingPdfPaths(paths);
       }
     } catch (e) {
       // No initial intent
     }
   }
 
-  Future<void> _handleIncomingPdfPath(String path) async {
-    final model = await PdfFileModel.fromPath(path);
-    final updated = await HistoryService.addOrUpdateFile(model);
+  Future<void> _handleIncomingPdfPaths(List<String> paths) async {
+    if (paths.isEmpty) return;
+    final models = <PdfFileModel>[];
+    for (final path in paths) {
+      models.add(await PdfFileModel.fromPath(path));
+    }
+    final updated = await HistoryService.addOrUpdateMultipleFiles(models);
     if (mounted) {
       setState(() {
         _openedFiles = updated;
       });
-      _showOptionModal(model);
+      if (models.length == 1) {
+        _showOptionModal(models.first);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${models.length} file PDF berhasil diterima dan ditambahkan'),
+            backgroundColor: const Color(0xFF6C63FF),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     }
   }
 
@@ -434,18 +446,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
-        allowMultiple: false,
+        allowMultiple: true,
       );
 
-      if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
-        final path = result.files.first.path!;
-        final model = await PdfFileModel.fromPath(path);
-        final updated = await HistoryService.addOrUpdateFile(model);
+      if (result != null && result.files.isNotEmpty) {
+        final pickedModels = <PdfFileModel>[];
+        for (final file in result.files) {
+          if (file.path != null) {
+            final model = await PdfFileModel.fromPath(file.path!);
+            pickedModels.add(model);
+          }
+        }
+
+        if (pickedModels.isEmpty) return;
+
+        final updated = await HistoryService.addOrUpdateMultipleFiles(pickedModels);
         if (mounted) {
           setState(() {
             _openedFiles = updated;
           });
-          _openViewer(model);
+
+          if (pickedModels.length == 1) {
+            _openViewer(pickedModels.first);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${pickedModels.length} file PDF berhasil ditambahkan ke beranda'),
+                backgroundColor: const Color(0xFF6C63FF),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
         }
       }
     } catch (e) {
@@ -473,35 +505,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         for (final file in result.files) {
           if (file.path != null) {
             final model = await PdfFileModel.fromPath(file.path!);
-            await HistoryService.addOrUpdateFile(model);
             pickedModels.add(model);
           }
         }
 
-        await _loadSavedHistory();
-
-        if (pickedModels.length >= 2) {
-          setState(() {
-            _isMergeMode = true;
-            _mergeQueue.clear();
-            _mergeQueue.addAll(pickedModels);
-          });
-          _openMergeScreen();
-        } else if (pickedModels.length == 1) {
-          setState(() {
-            _isMergeMode = true;
-            _mergeQueue.clear();
-            _mergeQueue.addAll(pickedModels);
-          });
+        if (pickedModels.isNotEmpty) {
+          final updated = await HistoryService.addOrUpdateMultipleFiles(pickedModels);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('File ditambahkan. Pilih 1 file lagi untuk digabungkan.'),
-                backgroundColor: const Color(0xFF6C63FF),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            );
+            setState(() {
+              _openedFiles = updated;
+            });
+
+            if (pickedModels.length >= 2) {
+              setState(() {
+                _isMergeMode = true;
+                _mergeQueue.clear();
+                _mergeQueue.addAll(pickedModels);
+              });
+              _openMergeScreen();
+            } else if (pickedModels.length == 1) {
+              setState(() {
+                _isMergeMode = true;
+                _mergeQueue.clear();
+                _mergeQueue.addAll(pickedModels);
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('File ditambahkan. Pilih 1 file lagi untuk digabungkan.'),
+                  backgroundColor: const Color(0xFF6C63FF),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            }
           }
         }
       }
@@ -598,7 +634,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: const Icon(Icons.menu_book_rounded, color: Color(0xFF6C63FF)),
                 ),
                 title: const Text('📖 Buka & Baca PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: const Text('Buka file PDF untuk dibaca', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                subtitle: const Text('Buka satu atau beberapa file PDF untuk dibaca', style: TextStyle(color: Colors.white54, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickAndReadPdf();

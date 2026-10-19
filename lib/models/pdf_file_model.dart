@@ -80,7 +80,7 @@ class PdfFileModel {
     } catch (_) {}
 
     return PdfFileModel(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: '${DateTime.now().microsecondsSinceEpoch}_${path.hashCode.abs()}',
       path: path,
       sizeBytes: size,
     );

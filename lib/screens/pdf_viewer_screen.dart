@@ -130,22 +130,28 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       );
 
       if (result != null && result.files.isNotEmpty) {
+        final models = <PdfFileModel>[];
         for (final file in result.files) {
           if (file.path != null) {
             final model = await PdfFileModel.fromPath(file.path!);
-            if (!_openedTabs.any((f) => f.path == model.path)) {
-              setState(() {
-                _openedTabs.add(model);
-                _activeTabIndex = _openedTabs.length - 1;
-                _isReady = false;
-                _showControls = true;
-                _currentPage = 0;
-              });
+            models.add(model);
+          }
+        }
 
-            } else {
-              final existingIndex = _openedTabs.indexWhere((f) => f.path == model.path);
-              _switchTab(existingIndex);
-            }
+        if (models.isNotEmpty) {
+          await HistoryService.addOrUpdateMultipleFiles(models);
+          if (mounted) {
+            setState(() {
+              for (final model in models) {
+                if (!_openedTabs.any((f) => f.path == model.path)) {
+                  _openedTabs.add(model);
+                }
+              }
+              final targetIndex = _openedTabs.indexWhere((f) => f.path == models.last.path);
+              if (targetIndex != -1) {
+                _switchTab(targetIndex);
+              }
+            });
           }
         }
       }

@@ -28,7 +28,19 @@ class HistoryService {
   static Future<List<PdfFileModel>> addOrUpdateFile(PdfFileModel file) async {
     final history = await loadHistory();
     history.removeWhere((f) => f.path == file.path);
-    history.insert(0, file); // Move to top of history
+    history.insert(0, file);
+    await saveHistory(history);
+    return history;
+  }
+
+  /// Add or update multiple file models in history in a single batch
+  static Future<List<PdfFileModel>> addOrUpdateMultipleFiles(List<PdfFileModel> files) async {
+    if (files.isEmpty) return await loadHistory();
+    final history = await loadHistory();
+    for (final file in files.reversed) {
+      history.removeWhere((f) => f.path == file.path);
+      history.insert(0, file);
+    }
     await saveHistory(history);
     return history;
   }
