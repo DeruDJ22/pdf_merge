@@ -8,6 +8,8 @@ import '../widgets/empty_state.dart';
 import 'pdf_viewer_screen.dart';
 import 'merge_screen.dart';
 import '../widgets/trim_pdf_dialog.dart';
+import '../services/update_service.dart';
+import '../widgets/update_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,6 +52,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Listen for incoming intents
     _setupIntentListener();
     _getInitialIntent();
+
+    // Check for app updates on mobile
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForUpdates(silent: true);
+    });
+  }
+
+  Future<void> _checkForUpdates({bool silent = true}) async {
+    try {
+      final updateInfo = await UpdateService.checkUpdate();
+      if (updateInfo != null && mounted) {
+        await UpdateDialog.show(context, updateInfo);
+      } else if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Aplikasi sudah menggunakan versi terbaru'),
+            backgroundColor: const Color(0xFF1E2533),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Gagal memeriksa pembaruan. Periksa koneksi internet.'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadSavedHistory() async {
@@ -769,6 +805,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onTap: _toggleMergeMode,
           ),
           const SizedBox(width: 4),
+          IconButton(
+            onPressed: () => _checkForUpdates(silent: false),
+            icon: const Icon(Icons.system_update_rounded, color: Color(0xFF94A3B8), size: 19),
+            tooltip: 'Cek Pembaruan',
+          ),
           IconButton(
             onPressed: _clearAppCache,
             icon: const Icon(Icons.cleaning_services_rounded, color: Color(0xFF94A3B8), size: 19),
