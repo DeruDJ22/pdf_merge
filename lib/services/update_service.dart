@@ -3,6 +3,83 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AppVersion {
+  final List<int> semverParts; // [major, minor, patch]
+  final int? buildNumber;
+  final String raw;
+
+  AppVersion({
+    required this.semverParts,
+    this.buildNumber,
+    required this.raw,
+  });
+
+  /// Parse strings like "v1.0.9-build.27", "v1.0.9+27", "1.0.9", "v1.1.0"
+  factory AppVersion.parse(String versionStr, {int? explicitBuildNumber}) {
+    var clean = versionStr.trim();
+    if (clean.startsWith('v') || clean.startsWith('V')) {
+      clean = clean.substring(1);
+    }
+
+    int? parsedBuild = explicitBuildNumber;
+
+    if (parsedBuild == null) {
+      final buildMatch = RegExp(r'[-+]build[.-](\d+)', caseSensitive: false).firstMatch(clean);
+      if (buildMatch != null) {
+        parsedBuild = int.tryParse(buildMatch.group(1)!);
+        clean = clean.substring(0, buildMatch.start);
+      } else {
+        final plusMatch = RegExp(r'\+(\d+)').firstMatch(clean);
+        if (plusMatch != null) {
+          parsedBuild = int.tryParse(plusMatch.group(1)!);
+          clean = clean.substring(0, plusMatch.start);
+        }
+      }
+    }
+
+    final parts = clean
+        .split('.')
+        .map((e) => int.tryParse(e.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
+        .toList();
+
+    // If 4 parts without explicit build (e.g. 1.0.9.27), 4th part is build number
+    if (parts.length >= 4 && parsedBuild == null) {
+      parsedBuild = parts[3];
+      parts.removeRange(3, parts.length);
+    }
+
+    while (parts.length < 3) {
+      parts.add(0);
+    }
+
+    return AppVersion(
+      semverParts: parts.sublist(0, 3),
+      buildNumber: parsedBuild,
+      raw: versionStr,
+    );
+  }
+
+  /// Returns 1 if this > other, -1 if this < other, 0 if equal
+  int compareTo(AppVersion other) {
+    for (var i = 0; i < 3; i++) {
+      final thisPart = i < semverParts.length ? semverParts[i] : 0;
+      final otherPart = i < other.semverParts.length ? other.semverParts[i] : 0;
+      if (thisPart > otherPart) return 1;
+      if (thisPart < otherPart) return -1;
+    }
+
+    // Semver is equal (e.g. 1.0.9 vs 1.0.9)
+    if (buildNumber != null && other.buildNumber != null) {
+      if (buildNumber! > other.buildNumber!) return 1;
+      if (buildNumber! < other.buildNumber!) return -1;
+      return 0;
+    }
+
+    return 0;
+  }
+}
 
 class AppUpdateInfo {
   final String tagName;
@@ -33,40 +110,27 @@ class AppUpdateInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '1.0.9';
-  static const int currentBuildNumber = 10;
+  static const String fallbackVersion = '1.0.9';
+  static const int fallbackBuildNumber = 10;
   static const String githubRepo = 'DeruDJ22/pdf_merge';
   static const MethodChannel _platform = MethodChannel('com.example.pdf_merge/merge');
 
-  /// Compare two semantic versions (e.g. "1.1.0" vs "1.0.9")
-  /// Returns true if remote is strictly greater than local.
-  static bool isNewerVersion(String remote, String local) {
-    try {
-      final cleanRemote = remote.replaceAll(RegExp(r'[^0-9.]'), '');
-      final cleanLocal = local.replaceAll(RegExp(r'[^0-9.]'), '');
-
-      final rParts = cleanRemote.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final lParts = cleanLocal.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-
-      final maxLength = rParts.length > lParts.length ? rParts.length : lParts.length;
-      while (rParts.length < maxLength) {
-        rParts.add(0);
-      }
-      while (lParts.length < maxLength) {
-        lParts.add(0);
-      }
-
-      for (var i = 0; i < maxLength; i++) {
-        if (rParts[i] > lParts[i]) return true;
-        if (rParts[i] < lParts[i]) return false;
-      }
-      return false;
-    } catch (_) {
-      return false;
+  /// Get actual installed application version from Android PackageManager
+  static Future<AppVersion> getInstalledVersion() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final result = await _platform.invokeMethod<Map<dynamic, dynamic>>('getAppVersion');
+        if (result != null) {
+          final vName = result['versionName'] as String? ?? fallbackVersion;
+          final vCode = (result['versionCode'] as num?)?.toInt() ?? fallbackBuildNumber;
+          return AppVersion.parse(vName, explicitBuildNumber: vCode);
+        }
+      } catch (_) {}
     }
+    return AppVersion.parse(fallbackVersion, explicitBuildNumber: fallbackBuildNumber);
   }
 
-  /// Check GitHub latest release
+  /// Check GitHub latest release and return AppUpdateInfo if newer
   static Future<AppUpdateInfo?> checkUpdate() async {
     // Only available for Android mobile
     if (kIsWeb || !Platform.isAndroid) return null;
@@ -91,12 +155,23 @@ class UpdateService {
       final body = data['body'] as String? ?? 'Peningkatan performa dan perbaikan bug.';
       final publishedAt = data['published_at'] as String? ?? '';
 
-      // Clean version string
-      final cleanRemoteVersion = tagName.replaceAll(RegExp(r'[^0-9.]'), '');
-      if (cleanRemoteVersion.isEmpty) return null;
+      if (tagName.isEmpty) return null;
 
-      // Check if remote version is newer than current app version
-      if (!isNewerVersion(cleanRemoteVersion, currentVersion)) {
+      // Check against last installed tag in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final lastInstalledTag = prefs.getString('last_installed_apk_tag');
+
+      final localVersion = await getInstalledVersion();
+      final remoteVersion = AppVersion.parse(tagName);
+
+      // If remote version is not strictly greater than local installed version, don't update
+      if (remoteVersion.compareTo(localVersion) <= 0) {
+        return null;
+      }
+
+      // If local app already initiated installation of this exact tag recently and version matches
+      if (lastInstalledTag != null && lastInstalledTag == tagName) {
+        // User already downloaded and installed this exact tag
         return null;
       }
 
@@ -122,11 +197,11 @@ class UpdateService {
 
       return AppUpdateInfo(
         tagName: tagName,
-        versionName: cleanRemoteVersion,
+        versionName: tagName,
         title: releaseName,
         changelog: body.trim(),
         apkUrl: apkDownloadUrl,
-        apkName: apkFileName ?? 'app-release.apk',
+        apkName: apkFileName ?? 'PDF-Merge-Android.apk',
         apkSizeBytes: apkSize,
         publishedAt: publishedAt,
       );
@@ -141,6 +216,7 @@ class UpdateService {
   static Future<void> downloadAndInstallApk({
     required String apkUrl,
     required String fileName,
+    required String tagName,
     required Function(int received, int total, double progress) onProgress,
   }) async {
     final client = HttpClient();
@@ -157,7 +233,7 @@ class UpdateService {
       var redirectCount = 0;
       HttpClientResponse? finalResponse;
 
-      // Follow redirects manually if needed (GitHub asset downloads often redirect to AWS S3)
+      // Follow redirects manually (GitHub asset downloads redirect to AWS S3)
       while (redirectCount < 5) {
         final request = await client.getUrl(currentUri);
         request.headers.set('User-Agent', 'PDFMerge-Mobile-App');
@@ -198,6 +274,10 @@ class UpdateService {
 
       await sink.flush();
       await sink.close();
+
+      // Record this tag as installed in SharedPreferences to prevent duplicate alerts
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_installed_apk_tag', tagName);
 
       // Trigger native installation
       await _platform.invokeMethod('installApk', {'filePath': targetFile.path});

@@ -40,6 +40,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       await UpdateService.downloadAndInstallApk(
         apkUrl: widget.updateInfo.apkUrl,
         fileName: widget.updateInfo.apkName,
+        tagName: widget.updateInfo.tagName,
         onProgress: (received, total, progress) {
           if (mounted) {
             final receivedMb = (received / (1024 * 1024)).toStringAsFixed(1);
